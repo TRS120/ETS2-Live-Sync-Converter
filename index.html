@@ -3,207 +3,1057 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ETS2/ATS Live Sync Converter</title>
+    <title>Live Sync CONVERTER & SII Decryptor</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        
-        :root { --accent: #38bdf8; --bg: #0b0f1a; --card: #161e2d; }
-        body { 
-            background-color: var(--bg); 
-            color: #e2e8f0; 
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-image: radial-gradient(circle at 50% -20%, #1e293b 0%, #0b0f1a 100%);
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+        :root {
+            --accent: #38bdf8;
+            --bg: #0b0f1a;
+            --card: #131b2b;
         }
-        .glass-card { 
-            background: rgba(22, 30, 45, 0.7); 
-            backdrop-filter: blur(12px); 
-            border: 1px solid rgba(255,255,255,0.08); 
-            border-radius: 16px; 
-            transition: transform 0.2s ease;
+
+        * {
+            box-sizing: border-box;
         }
-        .input-box {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid #2d3748;
-            color: white;
-            transition: all 0.2s ease;
+
+        body {
+            background-color: var(--bg);
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            background-image:
+                radial-gradient(circle at 20% -10%, rgba(56, 189, 248, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 85% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .mono {
             font-family: 'JetBrains Mono', monospace;
         }
+
+        .glass-card {
+            background: rgba(19, 27, 43, 0.82);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 16px;
+            box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+        }
+
+        .input-box {
+            background: rgba(11, 16, 28, 0.9);
+            border: 1px solid rgba(51, 65, 85, 0.85);
+            color: #f8fafc;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
         .input-box:focus-within {
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
         }
+
         .unit-select {
             background: #1e293b;
-            border-left: 1px solid #2d3748;
+            border-left: 1px solid rgba(51, 65, 85, 0.85);
             color: var(--accent);
-            font-weight: 800;
+            font-weight: 700;
             font-size: 0.75rem;
             cursor: pointer;
             outline: none;
             padding: 0 12px;
         }
+
         .label-text {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 700;
             color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.4rem;
             display: block;
         }
-        .copy-btn {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #64748b;
-            transition: color 0.2s;
-            background: #161e2d;
-            padding: 4px 8px;
-            border-radius: 6px;
+
+        .icon-action-btn {
+            color: #94a3b8;
+            background: #1e293b;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            transition: all 0.18s ease;
         }
-        .copy-btn:hover { color: var(--accent); }
-        
-        .sync-icon {
+
+        .icon-action-btn:hover {
             color: var(--accent);
-            opacity: 0.5;
-            animation: pulse 2s infinite;
+            border-color: rgba(56, 189, 248, 0.45);
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.8; }
-        }
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--accent);
+
+        #siiOutput::selection {
+            background: #f59e0b;
             color: #0b0f1a;
-            padding: 12px 24px;
+        }
+
+        .search-hl {
+            background: rgba(250, 204, 21, 0.28);
+            color: #fef08a;
+            border-radius: 3px;
+            padding: 0 1px;
+        }
+
+        .search-hl-active {
+            background: #f59e0b;
+            color: #0b0f1a;
+            font-weight: 700;
+            border-radius: 3px;
+            padding: 0 2px;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.45);
+        }
+
+        /* Custom subtle scrollbars */
+        textarea::-webkit-scrollbar,
+        pre::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        textarea::-webkit-scrollbar-track,
+        pre::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
             border-radius: 8px;
-            font-weight: bold;
-            display: none;
-            z-index: 100;
+        }
+        textarea::-webkit-scrollbar-thumb,
+        pre::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 8px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover,
+        pre::-webkit-scrollbar-thumb:hover {
+            background: #475569;
         }
     </style>
 </head>
-<body class="min-h-screen pb-12">
+<body class="antialiased selection:bg-sky-500/30 selection:text-sky-200">
 
-    <div id="toast" class="toast">Copied to clipboard!</div>
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-sky-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg hidden z-50 flex items-center gap-2">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMsg">Copied to clipboard!</span>
+    </div>
 
-    <header class="py-10 text-center">
-        <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">
-            <i class="fas fa-sync-alt mr-3 text-sky-400"></i>LIVE <span class="text-sky-400">SYNC</span> CONVERTER
-        </h1>
-        <p class="text-slate-400 text-sm font-medium">SII Data Conversion Utility</p>
+    <!-- Compact Top Bar -->
+    <header class="border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                    <i class="fas fa-truck-moving text-base"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white leading-tight">
+                        LIVE <span class="text-sky-400">SYNC CONVERTER</span> &amp; SII DECRYPTOR
+                    </h1>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">
+                        Browser-native ScsC / 3nK / BSII Decoder &amp; Save Hex Converter
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 text-[11px] font-semibold">
+                <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <i class="fas fa-shield-alt mr-1"></i>100% Client-Side
+                </span>
+                <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700/70 mono">
+                    ScsC • 3nK • BSII
+                </span>
+            </div>
+        </div>
     </header>
 
-    <main class="max-w-5xl mx-auto px-4 grid gap-8">
+    <!-- Main Responsive Dashboard Grid -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-        <!-- Weight & Float Section -->
-        <section class="glass-card p-8 shadow-2xl">
-            <div class="flex items-center justify-between mb-8">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-balance-scale text-sky-400 text-xl"></i>
-                    <h2 class="font-bold text-xl uppercase tracking-wide">Weight & Float Sync</h2>
-                </div>
-                <button onclick="clearSection('float')" class="text-xs text-slate-500 hover:text-red-400 transition-colors">
-                    <i class="fas fa-trash-alt mr-1"></i> CLEAR
-                </button>
-            </div>
-
-            <div class="grid md:grid-cols-[1fr_auto_1fr] items-center gap-8">
-                <div class="relative">
-                    <label class="label-text">Numeric Value</label>
-                    <div class="input-box flex overflow-hidden rounded-xl">
-                        <input type="number" id="floatInput" placeholder="0.0" class="bg-transparent w-full p-4 text-lg outline-none" oninput="syncFloatToHex()">
-                        <select id="unitSelector" class="unit-select" onchange="syncFloatToHex()">
-                            <option value="ton">TON</option>
-                            <option value="kg">KG</option>
-                        </select>
+        <!-- Left / Primary Column: SII Decryptor & Search (7 cols on lg) -->
+        <section class="glass-card p-5 sm:p-6 lg:col-span-7 flex flex-col gap-4">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                        <i class="fas fa-unlock-alt text-sm"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-sm sm:text-base uppercase tracking-wide text-white">SII Decryptor &amp; Inspector</h2>
+                        <p class="text-[11px] text-slate-400">Decrypt save files &amp; search values instantly</p>
                     </div>
                 </div>
 
-                <div class="hidden md:flex flex-col items-center">
-                    <i class="fas fa-arrows-left-right sync-icon text-xl"></i>
+                <div class="flex items-center gap-2">
+                    <button id="downloadSiiBtn" onclick="downloadDecryptedSii()" disabled
+                        class="text-xs bg-sky-500/20 text-sky-300 border border-sky-500/40 px-3 py-2 rounded-xl font-bold hover:bg-sky-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                        <i class="fas fa-download mr-1.5"></i>Download .SII
+                    </button>
+                    <button onclick="clearSection('sii')"
+                        class="text-xs bg-slate-800/90 hover:bg-red-500/20 text-slate-300 hover:text-red-300 border border-slate-700 hover:border-red-500/40 px-3 py-2 rounded-xl font-semibold transition-all">
+                        <i class="fas fa-trash-alt mr-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Compact File Drop Zone -->
+            <label id="dropZone" class="input-box rounded-xl p-4 border-dashed border-2 border-slate-700/90 hover:border-sky-400 cursor-pointer transition-colors flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-3 text-center sm:text-left">
+                    <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0 mx-auto sm:mx-0">
+                        <i class="fas fa-file-import text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs sm:text-sm font-semibold text-slate-100">
+                            Drop <span class="text-sky-400">.sii</span> file here or click to browse
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                            Supports <span class="text-slate-300">game.sii</span>, <span class="text-slate-300">info.sii</span>, <span class="text-slate-300">profile.sii</span> (AES-256 + Zlib / BSII)
+                        </div>
+                    </div>
+                </div>
+                <span class="text-xs font-bold bg-slate-800 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-lg shrink-0">
+                    Select File
+                </span>
+                <input type="file" id="siiFileInput" class="hidden" onchange="handleSiiFile(event)">
+            </label>
+
+            <!-- Pipeline Status Banner -->
+            <div id="siiInfo" class="hidden bg-slate-950/75 border border-slate-800 rounded-xl px-3.5 py-2.5 text-[11px] mono flex flex-wrap items-center justify-between gap-2"></div>
+
+            <!-- Search Toolbar -->
+            <div class="bg-slate-950/60 border border-slate-800/90 rounded-xl p-2.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div class="input-box flex items-center flex-1 rounded-lg px-3 py-2">
+                    <i class="fas fa-search text-slate-400 text-xs mr-2"></i>
+                    <input
+                        type="text"
+                        id="siiSearchInput"
+                        placeholder="Search key or value (e.g. money_account, cargo_mass)..."
+                        class="bg-transparent w-full text-xs outline-none text-white"
+                        oninput="runSiiSearch(true)"
+                        onkeydown="handleSiiSearchKey(event)"
+                    >
+                    <button type="button" id="siiSearchClearBtn" onclick="clearSiiSearch()" class="hidden text-slate-400 hover:text-white text-xs ml-2 px-1" title="Clear search">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
-                <div class="relative">
-                    <label class="label-text">SII Hex Representation</label>
-                    <div class="input-box flex overflow-hidden rounded-xl relative">
-                        <input type="text" id="hexInput" placeholder="HEX CODE" class="bg-transparent w-full p-4 pr-12 text-lg uppercase outline-none" oninput="syncHexToFloat()">
-                        <button class="copy-btn" onclick="copyToClipboard('hexInput')">
-                            <i class="fas fa-copy"></i>
+                <div class="flex items-center justify-between sm:justify-end gap-1.5">
+                    <span id="siiMatchCount" class="text-[11px] mono text-slate-400 px-2 min-w-[68px] text-center">0 / 0</span>
+
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="navigateSiiMatch(-1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-2 rounded-lg text-xs transition-colors" title="Previous match (Shift+Enter)">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                        <button type="button" onclick="navigateSiiMatch(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-2 rounded-lg text-xs transition-colors" title="Next match (Enter)">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <button type="button" id="siiCaseBtn" onclick="toggleSiiCase()" class="bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 px-2.5 py-2 rounded-lg text-xs mono font-bold transition-colors" title="Match Case">
+                            Aa
+                        </button>
+                        <button type="button" id="siiFilterBtn" onclick="toggleSiiFilterLines()" class="bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 px-2.5 py-2 rounded-lg text-xs mono font-bold transition-colors" title="Show only matching lines">
+                            <i class="fas fa-filter mr-1"></i>Lines
                         </button>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- Text & String Section -->
-        <section class="glass-card p-8 shadow-2xl">
-            <div class="flex items-center justify-between mb-8">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-font text-emerald-400 text-xl"></i>
-                    <h2 class="font-bold text-xl uppercase tracking-wide">Text & String Sync</h2>
+            <!-- Decrypted Output Area -->
+            <div class="relative">
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="label-text !mb-0">Decrypted SiiNunit Output</label>
+                    <button type="button" onclick="copyDecryptedOutput()" class="icon-action-btn text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5" title="Copy Output">
+                        <i class="fas fa-copy"></i> Copy All
+                    </button>
                 </div>
-                <button onclick="clearSection('text')" class="text-xs text-slate-500 hover:text-red-400 transition-colors">
-                    <i class="fas fa-trash-alt mr-1"></i> CLEAR
-                </button>
-            </div>
-
-            <div class="grid md:grid-cols-[1fr_auto_1fr] items-center gap-8">
-                <div class="relative">
-                    <label class="label-text">Plain Text</label>
-                    <div class="relative">
-                        <textarea id="textInput" placeholder="Type text..." class="input-box w-full p-4 rounded-xl h-32 text-sm outline-none resize-none" oninput="syncTextToHex()"></textarea>
-                    </div>
-                </div>
-
-                <div class="hidden md:flex flex-col items-center">
-                    <i class="fas fa-arrows-left-right sync-icon text-xl"></i>
-                </div>
-
-                <div class="relative">
-                    <label class="label-text">Hex String</label>
-                    <div class="relative h-32">
-                        <textarea id="hexTextInput" placeholder="Output hex..." class="input-box w-full p-4 pr-12 rounded-xl h-full text-sm uppercase outline-none resize-none" oninput="syncHexToText()"></textarea>
-                        <button class="copy-btn !top-8" onclick="copyToClipboard('hexTextInput')">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
+                <pre id="siiOutput" class="input-box w-full p-3.5 rounded-xl h-[360px] lg:h-[430px] text-xs leading-relaxed outline-none overflow-auto whitespace-pre select-text text-slate-300">Decrypted SII content will appear here...</pre>
             </div>
         </section>
 
+        <!-- Right / Secondary Column: Live Sync Converters (5 cols on lg) -->
+        <div class="lg:col-span-5 grid grid-cols-1 gap-6">
+
+            <!-- Weight & Float Live Sync Card -->
+            <section class="glass-card p-5 sm:p-6 flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                            <i class="fas fa-balance-scale text-sm"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-sm sm:text-base uppercase tracking-wide text-white">Weight &amp; Float Sync</h2>
+                            <p class="text-[11px] text-slate-400">IEEE-754 Float32 ↔ SII Hex</p>
+                        </div>
+                    </div>
+                    <button onclick="clearSection('float')" class="text-xs text-slate-400 hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-800/70">
+                        <i class="fas fa-trash-alt mr-1"></i>Clear
+                    </button>
+                </div>
+
+                <div class="grid gap-3.5">
+                    <div>
+                        <label class="label-text">Numeric Weight / Value</label>
+                        <div class="input-box flex overflow-hidden rounded-xl">
+                            <input type="number" step="any" id="floatInput" placeholder="0.0" class="bg-transparent w-full px-3.5 py-3 text-base outline-none" oninput="syncFloatToHex()">
+                            <select id="unitSelector" class="unit-select" onchange="syncFloatToHex()">
+                                <option value="ton">TON</option>
+                                <option value="kg">KG</option>
+                                <option value="lb">LB</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-center text-slate-500 text-xs gap-2">
+                        <span class="h-px bg-slate-800 flex-1"></span>
+                        <i class="fas fa-arrows-alt-v text-sky-400/70"></i>
+                        <span class="h-px bg-slate-800 flex-1"></span>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="label-text !mb-0">SII Hex Value</label>
+                            <button type="button" onclick="copyToClipboard('hexInput')" class="icon-action-btn text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1" title="Copy Hex">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <input type="text" id="hexInput" placeholder="HEX CODE" class="input-box w-full px-3.5 py-3 rounded-xl text-base uppercase outline-none" oninput="syncHexToFloat()">
+                        <p id="floatStatus" class="text-[11px] text-sky-300/80 mt-1.5 mono min-h-[16px]"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Text & String Hex Live Sync Card -->
+            <section class="glass-card p-5 sm:p-6 flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                            <i class="fas fa-font text-sm"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-sm sm:text-base uppercase tracking-wide text-white">Text &amp; String Sync</h2>
+                            <p class="text-[11px] text-slate-400">UTF-8 Plain Text ↔ Hex Bytes</p>
+                        </div>
+                    </div>
+                    <button onclick="clearSection('text')" class="text-xs text-slate-400 hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-800/70">
+                        <i class="fas fa-trash-alt mr-1"></i>Clear
+                    </button>
+                </div>
+
+                <div class="grid gap-3.5">
+                    <div>
+                        <label class="label-text">Plain Text (UTF-8)</label>
+                        <textarea id="textInput" placeholder="Type text..." class="input-box w-full p-3 rounded-xl h-24 text-xs outline-none resize-none" oninput="syncTextToHex()"></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-center text-slate-500 text-xs gap-2">
+                        <span class="h-px bg-slate-800 flex-1"></span>
+                        <i class="fas fa-arrows-alt-v text-emerald-400/70"></i>
+                        <span class="h-px bg-slate-800 flex-1"></span>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="label-text !mb-0">Hex String</label>
+                            <button type="button" onclick="copyToClipboard('hexTextInput')" class="icon-action-btn text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1" title="Copy Hex String">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <textarea id="hexTextInput" placeholder="Output hex..." class="input-box w-full p-3 rounded-xl h-24 text-xs uppercase outline-none resize-none" oninput="syncHexToText()"></textarea>
+                        <p id="textStatus" class="text-[11px] text-emerald-300/80 mt-1.5 mono min-h-[16px]"></p>
+                    </div>
+                </div>
+            </section>
+
+        </div>
     </main>
 
     <script>
-        // Utility: Copy to Clipboard
-        function copyToClipboard(id) {
-            const el = document.getElementById(id);
-            el.select();
-            document.execCommand('copy');
-            
+        let currentSiiFileName = 'decrypted.sii';
+        let currentDecryptedText = '';
+
+        // Search state
+        let siiMatches = [];
+        let siiMatchIdx = -1;
+        let siiCaseSensitive = false;
+        let siiFilterLinesMode = false;
+
+        // Standard SCS Software SII AES-256 Key
+        const SCS_AES_KEY = new Uint8Array([
+            0x2a, 0x5f, 0xcb, 0x17, 0x91, 0xd2, 0x2f, 0xb6,
+            0x02, 0x45, 0xb3, 0xd8, 0x36, 0x9e, 0xd0, 0xb2,
+            0xc2, 0x73, 0x71, 0x56, 0x3f, 0xbf, 0x1f, 0x3c,
+            0x9e, 0xdf, 0x6b, 0x11, 0x82, 0x5a, 0x5d, 0x0a
+        ]);
+
+        function showToast(msg = 'Copied to clipboard!') {
             const toast = document.getElementById('toast');
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.textContent = msg;
+            toast.classList.remove('hidden');
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2200);
         }
 
-        // Utility: Clear Sections
-        function clearSection(type) {
-            if(type === 'float') {
-                document.getElementById('floatInput').value = '';
-                document.getElementById('hexInput').value = '';
-            } else {
-                document.getElementById('textInput').value = '';
-                document.getElementById('hexTextInput').value = '';
+        function copyToClipboard(id) {
+            const el = document.getElementById(id);
+            const text = el.value || '';
+            if (!text) return;
+
+            // Use execCommand('copy') for reliable iFrame/sandbox support with fallback
+            try {
+                const temp = document.createElement('textarea');
+                temp.value = text;
+                temp.style.position = 'fixed';
+                temp.style.opacity = '0';
+                document.body.appendChild(temp);
+                temp.focus();
+                temp.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(temp);
+                if (ok) {
+                    showToast('Copied to clipboard!');
+                    return;
+                }
+            } catch (_) {}
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'));
             }
         }
 
-        // Logic: Float & Hex Sync
+        function copyDecryptedOutput() {
+            const text = currentDisplayedText || currentDecryptedText || '';
+            if (!text) return;
+            try {
+                const temp = document.createElement('textarea');
+                temp.value = text;
+                temp.style.position = 'fixed';
+                temp.style.opacity = '0';
+                document.body.appendChild(temp);
+                temp.focus();
+                temp.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(temp);
+                if (ok) {
+                    showToast('Copied to clipboard!');
+                    return;
+                }
+            } catch (_) {}
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'));
+            }
+        }
+
+        function clearSection(type) {
+            if (type === 'float') {
+                document.getElementById('floatInput').value = '';
+                document.getElementById('hexInput').value = '';
+                document.getElementById('floatStatus').textContent = '';
+            } else if (type === 'text') {
+                document.getElementById('textInput').value = '';
+                document.getElementById('hexTextInput').value = '';
+                document.getElementById('textStatus').textContent = '';
+            } else {
+                document.getElementById('siiFileInput').value = '';
+                const outEl = document.getElementById('siiOutput');
+                outEl.textContent = 'Decrypted SII content will appear here...';
+                outEl.classList.add('text-slate-400');
+                document.getElementById('siiInfo').classList.add('hidden');
+                document.getElementById('siiInfo').innerHTML = '';
+                document.getElementById('downloadSiiBtn').disabled = true;
+                currentDecryptedText = '';
+                currentDisplayedText = '';
+                clearSiiSearch();
+            }
+        }
+
+        let currentDisplayedText = '';
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        // --- Search Functions for Decrypted SII Output ---
+        function toggleSiiCase() {
+            siiCaseSensitive = !siiCaseSensitive;
+            const btn = document.getElementById('siiCaseBtn');
+            btn.classList.toggle('text-sky-400', siiCaseSensitive);
+            btn.classList.toggle('border-sky-400', siiCaseSensitive);
+            btn.classList.toggle('text-slate-400', !siiCaseSensitive);
+            btn.classList.toggle('border-slate-700', !siiCaseSensitive);
+            runSiiSearch(true);
+        }
+
+        function toggleSiiFilterLines() {
+            siiFilterLinesMode = !siiFilterLinesMode;
+            const btn = document.getElementById('siiFilterBtn');
+            btn.classList.toggle('text-amber-400', siiFilterLinesMode);
+            btn.classList.toggle('border-amber-400', siiFilterLinesMode);
+            btn.classList.toggle('text-slate-400', !siiFilterLinesMode);
+            btn.classList.toggle('border-slate-700', !siiFilterLinesMode);
+            runSiiSearch(true);
+        }
+
+        function clearSiiSearch() {
+            document.getElementById('siiSearchInput').value = '';
+            document.getElementById('siiSearchClearBtn').classList.add('hidden');
+            document.getElementById('siiMatchCount').textContent = '0 / 0';
+            siiMatches = [];
+            siiMatchIdx = -1;
+            if (currentDecryptedText) {
+                currentDisplayedText = currentDecryptedText;
+                document.getElementById('siiOutput').textContent = currentDecryptedText;
+            }
+        }
+
+        function handleSiiSearchKey(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                navigateSiiMatch(e.shiftKey ? -1 : 1);
+            }
+        }
+
+        function renderHighlightedText(text, matches, activeIndex) {
+            const outEl = document.getElementById('siiOutput');
+            if (!matches.length) {
+                outEl.textContent = text;
+                return;
+            }
+
+            // Cap inline DOM spans on huge files to keep rendering instant
+            const MAX_HIGHLIGHTS = 2000;
+            const limit = Math.min(matches.length, MAX_HIGHLIGHTS);
+            const parts = [];
+            let cursor = 0;
+
+            for (let i = 0; i < limit; i++) {
+                const m = matches[i];
+                if (m.start > cursor) {
+                    parts.push(escapeHtml(text.slice(cursor, m.start)));
+                }
+                const cls = i === activeIndex ? 'search-hl-active' : 'search-hl';
+                const idAttr = i === activeIndex ? ' id="siiActiveMatch"' : '';
+                parts.push(`<mark${idAttr} class="${cls}">${escapeHtml(text.slice(m.start, m.end))}</mark>`);
+                cursor = m.end;
+            }
+
+            if (cursor < text.length) {
+                parts.push(escapeHtml(text.slice(cursor)));
+            }
+
+            outEl.innerHTML = parts.join('');
+        }
+
+        function runSiiSearch(jumpToFirst = false) {
+            const queryRaw = document.getElementById('siiSearchInput').value;
+            const clearBtn = document.getElementById('siiSearchClearBtn');
+            const countEl = document.getElementById('siiMatchCount');
+            const outEl = document.getElementById('siiOutput');
+
+            clearBtn.classList.toggle('hidden', queryRaw.length === 0);
+
+            if (!currentDecryptedText) {
+                siiMatches = [];
+                siiMatchIdx = -1;
+                countEl.textContent = '0 / 0';
+                return;
+            }
+
+            // Trim only leading/trailing newline characters, preserve exact spaces inside query
+            const query = queryRaw.replace(/[\r\n]+/g, '');
+
+            if (!query) {
+                currentDisplayedText = currentDecryptedText;
+                outEl.textContent = currentDecryptedText;
+                siiMatches = [];
+                siiMatchIdx = -1;
+                countEl.textContent = '0 / 0';
+                return;
+            }
+
+            let displayText = currentDecryptedText;
+            if (siiFilterLinesMode) {
+                const lines = currentDecryptedText.split('\n');
+                const needle = siiCaseSensitive ? query : query.toLowerCase();
+                const matchedLines = [];
+                lines.forEach((line, idx) => {
+                    const hay = siiCaseSensitive ? line : line.toLowerCase();
+                    if (hay.includes(needle)) {
+                        matchedLines.push(`[L${idx + 1}] ${line}`);
+                    }
+                });
+                displayText = matchedLines.length
+                    ? matchedLines.join('\n')
+                    : `No lines matching "${query}"`;
+            }
+
+            currentDisplayedText = displayText;
+            siiMatches = [];
+
+            if (!(siiFilterLinesMode && displayText.startsWith('No lines matching "'))) {
+                const hay = siiCaseSensitive ? displayText : displayText.toLowerCase();
+                const needle = siiCaseSensitive ? query : query.toLowerCase();
+                let startPos = 0;
+                while (startPos <= hay.length - needle.length) {
+                    const idx = hay.indexOf(needle, startPos);
+                    if (idx === -1) break;
+                    siiMatches.push({ start: idx, end: idx + needle.length });
+                    startPos = idx + Math.max(1, needle.length);
+                }
+            }
+
+            if (siiMatches.length === 0) {
+                siiMatchIdx = -1;
+                countEl.textContent = '0 / 0';
+                outEl.textContent = displayText;
+                return;
+            }
+
+            if (jumpToFirst || siiMatchIdx < 0 || siiMatchIdx >= siiMatches.length) {
+                siiMatchIdx = 0;
+            }
+
+            countEl.textContent = `${siiMatchIdx + 1} / ${siiMatches.length}`;
+            renderHighlightedText(displayText, siiMatches, siiMatchIdx);
+            scrollToActiveMatch();
+        }
+
+        function navigateSiiMatch(delta) {
+            if (!siiMatches.length) return;
+            siiMatchIdx = (siiMatchIdx + delta + siiMatches.length) % siiMatches.length;
+            document.getElementById('siiMatchCount').textContent = `${siiMatchIdx + 1} / ${siiMatches.length}`;
+            renderHighlightedText(currentDisplayedText, siiMatches, siiMatchIdx);
+            scrollToActiveMatch();
+        }
+
+        function scrollToActiveMatch() {
+            const outEl = document.getElementById('siiOutput');
+            const activeEl = document.getElementById('siiActiveMatch');
+            if (!activeEl) return;
+
+            const containerRect = outEl.getBoundingClientRect();
+            const activeRect = activeEl.getBoundingClientRect();
+            const offsetTop = activeRect.top - containerRect.top + outEl.scrollTop;
+            const offsetLeft = activeRect.left - containerRect.left + outEl.scrollLeft;
+
+            outEl.scrollTo({
+                top: Math.max(0, offsetTop - outEl.clientHeight / 2),
+                left: Math.max(0, offsetLeft - 40),
+                behavior: 'smooth'
+            });
+        }
+
+        // Drag & Drop support
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-sky-400');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-sky-400'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-sky-400');
+            if (e.dataTransfer.files?.length) {
+                processSiiFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleSiiFile(event) {
+            const file = event.target.files?.[0];
+            if (file) processSiiFile(file);
+        }
+
+        function downloadDecryptedSii() {
+            if (!currentDecryptedText) return;
+            const blob = new Blob([currentDecryptedText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentSiiFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function getMagic(bytes) {
+            if (bytes.length < 4) return '';
+            return String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]);
+        }
+
+        async function decryptScsC(bytes) {
+            if (bytes.length < 56) throw new Error('ScsC header truncated (< 56 bytes)');
+            const iv = bytes.slice(36, 52);
+            const cipherData = bytes.slice(56);
+
+            const cryptoKey = await crypto.subtle.importKey(
+                'raw',
+                SCS_AES_KEY,
+                { name: 'AES-CBC' },
+                false,
+                ['decrypt']
+            );
+
+            const decryptedBuf = await crypto.subtle.decrypt(
+                { name: 'AES-CBC', iv },
+                cryptoKey,
+                cipherData
+            );
+
+            return pako.inflate(new Uint8Array(decryptedBuf));
+        }
+
+        function decrypt3nK(bytes) {
+            if (bytes.length < 6) throw new Error('3nK header truncated');
+            let key = (bytes[4] | (bytes[5] << 8)) & 0xFFFF;
+            const out = new Uint8Array(bytes.length - 6);
+            for (let i = 6; i < bytes.length; i++) {
+                out[i - 6] = (((((key << 2) ^ key) >> 3) ^ key) ^ bytes[i]) & 0xFF;
+                key = ((key >> 1) | ((key & 1) << 15)) & 0xFFFF;
+            }
+            try {
+                return pako.inflate(out);
+            } catch (_) {
+                return out;
+            }
+        }
+
+        // BSII (Binary SII) Decoder
+        function decodeBSII(bytes) {
+            const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+            let pos = 0;
+
+            const readU8 = () => view.getUint8(pos++);
+            const readU16 = () => { const v = view.getUint16(pos, true); pos += 2; return v; };
+            const readI16 = () => { const v = view.getInt16(pos, true); pos += 2; return v; };
+            const readI32 = () => { const v = view.getInt32(pos, true); pos += 4; return v; };
+            const readU32 = () => { const v = view.getUint32(pos, true); pos += 4; return v; };
+            const readI64 = () => { const v = view.getBigInt64(pos, true); pos += 8; return v; };
+            const readU64 = () => { const v = view.getBigUint64(pos, true); pos += 8; return v; };
+            const readF32 = () => { const v = view.getFloat32(pos, true); pos += 4; return v; };
+
+            const readString = () => {
+                const len = readU32();
+                if (len === 0) return '';
+                const strBytes = bytes.slice(pos, pos + len);
+                pos += len;
+                return new TextDecoder('utf-8').decode(strBytes);
+            };
+
+            const magic = getMagic(bytes);
+            if (magic !== 'BSII') throw new Error('Not a valid BSII stream');
+            pos = 4;
+
+            const version = readU32();
+            if (version !== 1 && version !== 2 && version !== 3) {
+                throw new Error(`Unsupported BSII version: ${version}`);
+            }
+
+            const ENCODED_CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_';
+            function decodeEncodedString(val) {
+                if (val === 0n) return 'null';
+                let res = '';
+                let v = val;
+                while (v > 0n) {
+                    const idx = Number(v % 64n);
+                    if (idx === 0) break;
+                    res += ENCODED_CHARS[idx - 1] || '?';
+                    v /= 64n;
+                }
+                return res;
+            }
+
+            function formatFloat(f) {
+                if (Number.isInteger(f) && Math.abs(f) < 1e7) return f.toFixed(1);
+                const buf = new ArrayBuffer(4);
+                new Float32Array(buf)[0] = f;
+                const hex = Array.from(new Uint8Array(buf)).reverse()
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+                return `&${hex}`;
+            }
+
+            function readUnitPtr() {
+                const len = readU8();
+                if (len === 0) return 'null';
+                if (len === 255) {
+                    const id = readU64();
+                    return `_nameless.${id.toString(16).padStart(4, '0')}`;
+                }
+                const parts = [];
+                for (let i = 0; i < len; i++) {
+                    parts.push(decodeEncodedString(readU64()));
+                }
+                return parts.join('.');
+            }
+
+            function readValue(typeId) {
+                switch (typeId) {
+                    case 0x01: return JSON.stringify(readString());
+                    case 0x02: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(JSON.stringify(readString()));
+                        return arr;
+                    }
+                    case 0x03: return decodeEncodedString(readU64());
+                    case 0x04: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(decodeEncodedString(readU64()));
+                        return arr;
+                    }
+                    case 0x05: return formatFloat(readF32());
+                    case 0x06: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(formatFloat(readF32()));
+                        return arr;
+                    }
+                    case 0x07: return `(${formatFloat(readF32())}, ${formatFloat(readF32())})`;
+                    case 0x09: return `(${formatFloat(readF32())}, ${formatFloat(readF32())}, ${formatFloat(readF32())})`;
+                    case 0x0A: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) {
+                            arr.push(`(${formatFloat(readF32())}, ${formatFloat(readF32())}, ${formatFloat(readF32())})`);
+                        }
+                        return arr;
+                    }
+                    case 0x11: {
+                        const a = readI32(), b = readI32(), c = readI32();
+                        return `(${a}, ${b}, ${c})`;
+                    }
+                    case 0x12: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(`(${readI32()}, ${readI32()}, ${readI32()})`);
+                        return arr;
+                    }
+                    case 0x17:
+                        return `(${formatFloat(readF32())}; ${formatFloat(readF32())}, ${formatFloat(readF32())}, ${formatFloat(readF32())})`;
+                    case 0x18: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) {
+                            arr.push(`(${formatFloat(readF32())}; ${formatFloat(readF32())}, ${formatFloat(readF32())}, ${formatFloat(readF32())})`);
+                        }
+                        return arr;
+                    }
+                    case 0x19: {
+                        const x = formatFloat(readF32()), y = formatFloat(readF32()), z = formatFloat(readF32());
+                        const qw = formatFloat(readF32()), qx = formatFloat(readF32()), qy = formatFloat(readF32()), qz = formatFloat(readF32());
+                        return `(${x}, ${y}, ${z}) (${qw}; ${qx}, ${qy}, ${qz})`;
+                    }
+                    case 0x1A: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) {
+                            const x = formatFloat(readF32()), y = formatFloat(readF32()), z = formatFloat(readF32());
+                            const qw = formatFloat(readF32()), qx = formatFloat(readF32()), qy = formatFloat(readF32()), qz = formatFloat(readF32());
+                            arr.push(`(${x}, ${y}, ${z}) (${qw}; ${qx}, ${qy}, ${qz})`);
+                        }
+                        return arr;
+                    }
+                    case 0x25: return String(readI32());
+                    case 0x26: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(String(readI32()));
+                        return arr;
+                    }
+                    case 0x27: return String(readU32());
+                    case 0x28: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(String(readU32()));
+                        return arr;
+                    }
+                    case 0x29: return String(readI16());
+                    case 0x2B: return String(readU16());
+                    case 0x2C: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(String(readU16()));
+                        return arr;
+                    }
+                    case 0x31: return String(readI64());
+                    case 0x32: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(String(readI64()));
+                        return arr;
+                    }
+                    case 0x33: return String(readU64());
+                    case 0x34: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(String(readU64()));
+                        return arr;
+                    }
+                    case 0x35: return readU8() !== 0 ? 'true' : 'false';
+                    case 0x36: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(readU8() !== 0 ? 'true' : 'false');
+                        return arr;
+                    }
+                    case 0x37: {
+                        const count = readU32();
+                        const map = {};
+                        for (let i = 0; i < count; i++) {
+                            const idx = readU32();
+                            map[idx] = readString();
+                        }
+                        return map;
+                    }
+                    case 0x39:
+                    case 0x3B:
+                    case 0x3D:
+                        return readUnitPtr();
+                    case 0x3A:
+                    case 0x3C:
+                    case 0x3E: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(readUnitPtr());
+                        return arr;
+                    }
+                    default:
+                        throw new Error(`Unknown BSII field type 0x${typeId.toString(16)} at offset ${pos}`);
+                }
+            }
+
+            const structures = {};
+            const lines = ['SiiNunit', '{'];
+
+            while (pos < bytes.length) {
+                const blockType = readU32();
+                if (blockType === 0) {
+                    const validity = readU8();
+                    if (validity === 0) break;
+                    const structId = readU32();
+                    const structName = readString();
+                    const fields = [];
+                    while (true) {
+                        const fieldType = readU32();
+                        if (fieldType === 0) break;
+                        const fieldName = readString();
+                        let ordMap = null;
+                        if (fieldType === 0x37) {
+                            ordMap = readValue(0x37);
+                        }
+                        fields.push({ fieldType, fieldName, ordMap });
+                    }
+                    structures[structId] = { structName, fields };
+                } else {
+                    const struct = structures[blockType];
+                    if (!struct) throw new Error(`Missing BSII structure definition for ID ${blockType}`);
+                    const unitName = readUnitPtr();
+                    lines.push(`${struct.structName} : ${unitName} {`);
+
+                    for (const field of struct.fields) {
+                        if (field.fieldType === 0x37) {
+                            const selected = readU32();
+                            const strVal = field.ordMap?.[selected] ?? '';
+                            lines.push(` ${field.fieldName}: ${JSON.stringify(strVal)}`);
+                            continue;
+                        }
+                        const val = readValue(field.fieldType);
+                        if (Array.isArray(val)) {
+                            lines.push(` ${field.fieldName}: ${val.length}`);
+                            for (let i = 0; i < val.length; i++) {
+                                lines.push(` ${field.fieldName}[${i}]: ${val[i]}`);
+                            }
+                        } else {
+                            lines.push(` ${field.fieldName}: ${val}`);
+                        }
+                    }
+                    lines.push('}', '');
+                }
+            }
+
+            lines.push('}');
+            return lines.join('\n');
+        }
+
+        async function processSiiFile(file) {
+            const infoEl = document.getElementById('siiInfo');
+            const outEl = document.getElementById('siiOutput');
+            const dlBtn = document.getElementById('downloadSiiBtn');
+
+            currentSiiFileName = file.name.replace(/\.sii$/i, '') + '_decrypted.sii';
+            dlBtn.disabled = true;
+            outEl.textContent = 'Processing...';
+
+            try {
+                const buf = await file.arrayBuffer();
+                let data = new Uint8Array(buf);
+                const stages = [];
+
+                let magic = getMagic(data);
+                stages.push(magic || 'RAW');
+
+                if (magic === 'ScsC') {
+                    data = await decryptScsC(data);
+                    magic = getMagic(data);
+                    stages.push(`Decrypted/Inflated → ${magic || 'TEXT'}`);
+                } else if (magic.startsWith('3nK')) {
+                    data = decrypt3nK(data);
+                    magic = getMagic(data);
+                    stages.push(`3nK Decrypted → ${magic || 'TEXT'}`);
+                }
+
+                let finalText = '';
+                if (magic === 'BSII') {
+                    finalText = decodeBSII(data);
+                    stages.push('BSII Decoded → Plain SiiNunit');
+                } else {
+                    finalText = new TextDecoder('utf-8', { fatal: false }).decode(data);
+                }
+
+                // Normalize CRLF (\r\n) to LF (\n) so character offsets and line numbers match 1:1
+                finalText = finalText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+                currentDecryptedText = finalText;
+                currentDisplayedText = finalText;
+                outEl.textContent = finalText;
+                dlBtn.disabled = false;
+
+                if (document.getElementById('siiSearchInput').value) {
+                    runSiiSearch(true);
+                }
+
+                infoEl.classList.remove('hidden');
+                infoEl.innerHTML = `
+                    <div class="text-slate-200"><span class="text-slate-400">File:</span> ${file.name} (${buf.byteLength.toLocaleString()} B)</div>
+                    <div class="text-emerald-400">${stages.join('  →  ')}</div>
+                    <div class="text-slate-300">${finalText.length.toLocaleString()} chars</div>
+                `;
+                showToast('SII decrypted successfully!');
+            } catch (err) {
+                console.error(err);
+                infoEl.classList.remove('hidden');
+                infoEl.innerHTML = `<div class="text-red-400"><i class="fas fa-exclamation-triangle mr-1"></i> Error: ${err.message}</div>`;
+                outEl.textContent = `Failed to decrypt/decode "${file.name}".\nReason: ${err.message}`;
+            }
+        }
+
+        // --- Weight & Text Live Sync Functions ---
+        function toKg(val, unit) {
+            if (unit === 'ton') return val * 1000;
+            if (unit === 'lb') return val * 0.45359237;
+            return val;
+        }
+
+        function fromKg(kgVal, unit) {
+            if (unit === 'ton') return kgVal / 1000;
+            if (unit === 'lb') return kgVal / 0.45359237;
+            return kgVal;
+        }
+
         function floatToHex(f) {
             const buf = new ArrayBuffer(4);
             (new Float32Array(buf))[0] = f;
@@ -213,72 +1063,74 @@
         }
 
         function hexToFloat(h) {
-            h = h.replace(/[&]/g, '').trim();
-            if (h.length !== 8) return null;
-            try {
-                const bytes = new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b, 16)).reverse());
-                return new Float32Array(bytes.buffer)[0];
-            } catch(e) { return null; }
+            const clean = h.replace(/^[&]|^0x/i, '').replace(/[^0-9A-Fa-f]/g, '');
+            if (clean.length !== 8) return null;
+            const bytes = new Uint8Array(clean.match(/.{1,2}/g).map(b => parseInt(b, 16)).reverse());
+            return new Float32Array(bytes.buffer)[0];
         }
 
         function syncFloatToHex() {
             const valInput = document.getElementById('floatInput').value;
             const unit = document.getElementById('unitSelector').value;
             const target = document.getElementById('hexInput');
-            
-            if (valInput === "") { target.value = ""; return; }
-            
-            let val = parseFloat(valInput);
-            let finalVal = val;
-            if (unit === 'ton') finalVal = val * 1000;
-            
-            target.value = '&' + floatToHex(finalVal);
+            const status = document.getElementById('floatStatus');
+
+            if (valInput === '') { target.value = ''; status.textContent = ''; return; }
+            const val = parseFloat(valInput);
+            if (Number.isNaN(val)) { status.textContent = 'Invalid number'; return; }
+
+            const kgVal = toKg(val, unit);
+            target.value = '&' + floatToHex(kgVal);
+            status.textContent = `Float32 (KG): ${kgVal}`;
         }
 
         function syncHexToFloat() {
-            const val = document.getElementById('hexInput').value.trim();
+            const raw = document.getElementById('hexInput').value.trim();
             const unit = document.getElementById('unitSelector').value;
             const target = document.getElementById('floatInput');
-            
-            if (val === "" || val === "&") {
-                target.value = "";
-                return;
-            }
-            
-            const result = hexToFloat(val);
-            if (result !== null && !isNaN(result)) {
-                let displayVal = result;
-                if (unit === 'ton') displayVal = result / 1000;
-                target.value = Number(displayVal.toFixed(6));
-            }
+            const status = document.getElementById('floatStatus');
+
+            const clean = raw.replace(/^[&]|^0x/i, '').replace(/[^0-9A-Fa-f]/g, '');
+            if (!clean) { target.value = ''; status.textContent = ''; return; }
+            if (clean.length < 8) { status.textContent = `Hex length: ${clean.length}/8 nibbles`; return; }
+            if (clean.length > 8) { status.textContent = 'Expected 8 hex characters'; return; }
+
+            const result = hexToFloat(clean);
+            if (result === null || Number.isNaN(result)) { status.textContent = 'Invalid hex float'; return; }
+
+            const displayVal = fromKg(result, unit);
+            target.value = Number(displayVal.toFixed(6));
+            status.textContent = `Float32 (KG): ${result}`;
         }
 
-        // Logic: Text & Hex Sync
         function syncTextToHex() {
             const txt = document.getElementById('textInput').value;
             const target = document.getElementById('hexTextInput');
-            if (!txt) { target.value = ""; return; }
-            const hex = Array.from(new TextEncoder().encode(txt))
-                .map(b => b.toString(16).padStart(2, '0').toUpperCase())
-                .join('');
-            target.value = hex;
+            const status = document.getElementById('textStatus');
+
+            if (!txt) { target.value = ''; status.textContent = ''; return; }
+            const bytes = new TextEncoder().encode(txt);
+            target.value = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('');
+            status.textContent = `Bytes: ${bytes.length}`;
         }
 
         function syncHexToText() {
-            let val = document.getElementById('hexTextInput').value;
+            const val = document.getElementById('hexTextInput').value;
             const target = document.getElementById('textInput');
-            
-            let hex = val.replace(/[^0-9A-Fa-f]/g, '');
-            if (hex.length === 0) { target.value = ""; return; }
-            if (hex.length % 2 !== 0) return; 
+            const status = document.getElementById('textStatus');
+
+            const hex = val.replace(/[^0-9A-Fa-f]/g, '');
+            if (!hex.length) { target.value = ''; status.textContent = ''; return; }
+            if (hex.length % 2 !== 0) { status.textContent = 'Incomplete byte (odd hex length)'; return; }
 
             try {
                 const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-                target.value = new TextDecoder().decode(bytes);
-            } catch(e) {
+                target.value = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+                status.textContent = `Decoded ${bytes.length} bytes`;
+            } catch (e) {
+                status.textContent = 'Decode error';
             }
         }
     </script>
 </body>
 </html>
-
