@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Sync CONVERTER & SII Decryptor</title>
+    <title>ETS2/ATS Live Sync & SII Decryptor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,8 +12,8 @@
 
         :root {
             --accent: #38bdf8;
-            --bg: #0b0f1a;
-            --card: #131b2b;
+            --bg: #080d17;
+            --card: #111827;
         }
 
         * {
@@ -25,8 +25,8 @@
             color: #e2e8f0;
             font-family: 'Inter', sans-serif;
             background-image:
-                radial-gradient(circle at 20% -10%, rgba(56, 189, 248, 0.12) 0%, transparent 45%),
-                radial-gradient(circle at 85% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
+                radial-gradient(circle at 15% -10%, rgba(56, 189, 248, 0.14) 0%, transparent 45%),
+                radial-gradient(circle at 85% 5%, rgba(16, 185, 129, 0.09) 0%, transparent 42%);
             min-height: 100vh;
             overflow-x: hidden;
         }
@@ -36,16 +36,21 @@
         }
 
         .glass-card {
-            background: rgba(19, 27, 43, 0.82);
-            backdrop-filter: blur(14px);
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(12px);
             border: 1px solid rgba(148, 163, 184, 0.12);
-            border-radius: 16px;
-            box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.55);
+            transition: border-color 0.2s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(148, 163, 184, 0.22);
         }
 
         .input-box {
-            background: rgba(11, 16, 28, 0.9);
-            border: 1px solid rgba(51, 65, 85, 0.85);
+            background: rgba(6, 11, 20, 0.96);
+            border: 1px solid rgba(71, 85, 105, 0.85);
             color: #f8fafc;
             transition: border-color 0.18s ease, box-shadow 0.18s ease;
             font-family: 'JetBrains Mono', monospace;
@@ -53,45 +58,66 @@
 
         .input-box:focus-within {
             border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
         }
 
         .unit-select {
             background: #1e293b;
-            border-left: 1px solid rgba(51, 65, 85, 0.85);
-            color: var(--accent);
+            border-left: 1px solid rgba(71, 85, 105, 0.85);
+            color: #7dd3fc;
             font-weight: 700;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             cursor: pointer;
             outline: none;
             padding: 0 12px;
         }
 
         .label-text {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            color: #94a3b8;
+            color: #cbd5e1;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin-bottom: 0.4rem;
+            letter-spacing: 0.05em;
             display: block;
         }
 
+        .chip-btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 7px;
+            background: rgba(30, 41, 59, 0.9);
+            color: #e2e8f0;
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+
+        .chip-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            color: #7dd3fc;
+            border-color: rgba(56, 189, 248, 0.65);
+            transform: translateY(-1px);
+        }
+
         .icon-action-btn {
-            color: #94a3b8;
+            color: #f1f5f9;
             background: #1e293b;
-            border: 1px solid rgba(71, 85, 105, 0.5);
-            transition: all 0.18s ease;
+            border: 1px solid rgba(100, 116, 139, 0.55);
+            transition: all 0.16s ease;
+            cursor: pointer;
         }
 
         .icon-action-btn:hover {
-            color: var(--accent);
-            border-color: rgba(56, 189, 248, 0.45);
+            color: #7dd3fc;
+            border-color: rgba(56, 189, 248, 0.65);
+            background: rgba(30, 41, 59, 1);
         }
 
         #siiOutput::selection {
             background: #f59e0b;
-            color: #0b0f1a;
+            color: #080d17;
         }
 
         .search-hl {
@@ -103,14 +129,13 @@
 
         .search-hl-active {
             background: #f59e0b;
-            color: #0b0f1a;
+            color: #080d17;
             font-weight: 700;
             border-radius: 3px;
             padding: 0 2px;
             box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.45);
         }
 
-        /* Custom subtle scrollbars */
         textarea::-webkit-scrollbar,
         pre::-webkit-scrollbar {
             width: 8px;
@@ -134,166 +159,181 @@
 </head>
 <body class="antialiased selection:bg-sky-500/30 selection:text-sky-200">
 
+    <!-- Global Drag & Drop Overlay -->
+    <div id="globalDropOverlay" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 hidden items-center justify-center p-6 pointer-events-none">
+        <div class="border-2 border-dashed border-sky-400 bg-sky-500/10 rounded-3xl p-10 text-center max-w-md w-full shadow-2xl">
+            <div class="w-16 h-16 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fas fa-file-arrow-down"></i>
+            </div>
+            <h3 class="text-lg font-extrabold text-white">Drop .SII File Anywhere</h3>
+            <p class="text-xs text-slate-300 mt-1.5">Instant browser-native decryption for game.sii, info.sii &amp; profile.sii</p>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-4 right-4 bg-sky-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg hidden z-50 flex items-center gap-2">
+    <div id="toast" class="fixed bottom-5 right-5 bg-sky-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-xl hidden z-50 flex items-center gap-2">
         <i class="fas fa-check-circle"></i>
         <span id="toastMsg">Copied to clipboard!</span>
     </div>
 
-    <!-- Compact Top Bar -->
-    <header class="border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                    <i class="fas fa-truck-moving text-base"></i>
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-slate-800/70 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30">
+        <div class="w-full px-4 sm:px-6 py-2 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                    <i class="fas fa-truck-moving text-xs"></i>
                 </div>
-                <div>
-                    <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white leading-tight">
-                        LIVE <span class="text-sky-400">SYNC CONVERTER</span> &amp; SII DECRYPTOR
+                <div class="flex items-baseline gap-2.5">
+                    <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">
+                        ETS2/ATS <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">LIVE SYNC</span>
                     </h1>
-                    <p class="text-[11px] text-slate-400 hidden sm:block">
-                        Browser-native ScsC / 3nK / BSII Decoder &amp; Save Hex Converter
-                    </p>
+                    <span class="text-xs text-slate-300 hidden sm:inline">SII Decryptor &amp; Hex Converter</span>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 text-[11px] font-semibold">
-                <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <i class="fas fa-shield-alt mr-1"></i>100% Client-Side
-                </span>
-                <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700/70 mono">
-                    ScsC • 3nK • BSII
-                </span>
+            <div class="flex items-center gap-2 text-xs font-semibold">
+                <button type="button" onclick="toggleQuickGuide()" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600/80 transition-colors flex items-center gap-1.5">
+                    <i class="fas fa-circle-question text-sky-400"></i>
+                    <span>Guide</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Collapsible Quick Guide Drawer -->
+        <div id="quickGuideDrawer" class="hidden border-t border-slate-800/70 bg-slate-900/95">
+            <div class="w-full px-4 sm:px-6 py-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                <div class="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2">
+                    <span class="text-sky-400 font-bold mono text-[11px]">01. Convert Name</span>
+                    <p class="text-slate-300 mt-0.5 text-[11px]">Type profile name in <b>Text &amp; Profile Hex</b> and copy Hex ID.</p>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2">
+                    <span class="text-sky-400 font-bold mono text-[11px]">02. Rename Folder</span>
+                    <p class="text-slate-300 mt-0.5 text-[11px]">Rename folder inside <code class="text-slate-200">Documents/.../profiles/</code> to Hex ID.</p>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2">
+                    <span class="text-sky-400 font-bold mono text-[11px]">03. Decrypt &amp; Edit</span>
+                    <p class="text-slate-300 mt-0.5 text-[11px]">Drop <code class="text-slate-200">profile.sii</code>, download text, and edit <code class="text-amber-300">profile_name:</code>.</p>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2">
+                    <span class="text-emerald-400 font-bold mono text-[11px]">04. Shortcuts</span>
+                    <p class="text-slate-300 mt-0.5 text-[11px]"><kbd class="px-1 bg-slate-800 rounded text-[10px]">Ctrl+F</kbd> search, <kbd class="px-1 bg-slate-800 rounded text-[10px]">Enter</kbd> next match.</p>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Responsive Dashboard Grid -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- Full-Viewport Workspace -->
+    <main class="w-full px-4 sm:px-6 py-3 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:h-[calc(100vh-50px)] items-stretch">
 
-        <!-- Left / Primary Column: SII Decryptor & Search (7 cols on lg) -->
-        <section class="glass-card p-5 sm:p-6 lg:col-span-7 flex flex-col gap-4">
+        <!-- Left / Primary Column: Unified SII Decryptor & Output (8 cols) -->
+        <section class="glass-card p-3.5 lg:col-span-8 flex flex-col gap-2 min-h-0">
             <div class="flex items-center justify-between gap-2 flex-wrap">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                        <i class="fas fa-unlock-alt text-sm"></i>
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-400">
+                        <i class="fas fa-unlock-alt text-xs"></i>
                     </div>
                     <div>
-                        <h2 class="font-bold text-sm sm:text-base uppercase tracking-wide text-white">SII Decryptor &amp; Inspector</h2>
-                        <p class="text-[11px] text-slate-400">Decrypt save files &amp; search values instantly</p>
+                        <h2 class="font-bold text-sm uppercase tracking-wide text-white leading-tight">SII Decryptor</h2>
+                        <p class="text-xs text-slate-300 leading-tight">ScsC • 3nK • BSII Auto-Decode</p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5">
+                    <label for="siiFileInput" class="text-xs bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40 px-3 py-1 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1.5">
+                        <i class="fas fa-folder-open"></i>Browse
+                    </label>
+                    <input type="file" id="siiFileInput" class="hidden" onchange="handleSiiFile(event)">
+
                     <button id="downloadSiiBtn" onclick="downloadDecryptedSii()" disabled
-                        class="text-xs bg-sky-500/20 text-sky-300 border border-sky-500/40 px-3 py-2 rounded-xl font-bold hover:bg-sky-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                        <i class="fas fa-download mr-1.5"></i>Download .SII
+                        class="text-xs bg-sky-400 text-slate-950 px-3 py-1 rounded-lg font-extrabold hover:bg-sky-300 disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed transition-all">
+                        <i class="fas fa-download mr-1"></i>Download
                     </button>
                     <button onclick="clearSection('sii')"
-                        class="text-xs bg-slate-800/90 hover:bg-red-500/20 text-slate-300 hover:text-red-300 border border-slate-700 hover:border-red-500/40 px-3 py-2 rounded-xl font-semibold transition-all">
-                        <i class="fas fa-trash-alt mr-1"></i>Clear
+                        class="text-xs bg-slate-800 hover:bg-red-500/20 text-slate-200 hover:text-red-300 border border-slate-600/80 px-2.5 py-1 rounded-lg font-semibold transition-all">
+                        Clear
                     </button>
                 </div>
             </div>
 
-            <!-- Compact File Drop Zone -->
-            <label id="dropZone" class="input-box rounded-xl p-4 border-dashed border-2 border-slate-700/90 hover:border-sky-400 cursor-pointer transition-colors flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div class="flex items-center gap-3 text-center sm:text-left">
-                    <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0 mx-auto sm:mx-0">
-                        <i class="fas fa-file-import text-lg"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs sm:text-sm font-semibold text-slate-100">
-                            Drop <span class="text-sky-400">.sii</span> file here or click to browse
-                        </div>
-                        <div class="text-[11px] text-slate-400 mt-0.5">
-                            Supports <span class="text-slate-300">game.sii</span>, <span class="text-slate-300">info.sii</span>, <span class="text-slate-300">profile.sii</span> (AES-256 + Zlib / BSII)
-                        </div>
-                    </div>
-                </div>
-                <span class="text-xs font-bold bg-slate-800 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-lg shrink-0">
-                    Select File
-                </span>
-                <input type="file" id="siiFileInput" class="hidden" onchange="handleSiiFile(event)">
-            </label>
-
             <!-- Pipeline Status Banner -->
-            <div id="siiInfo" class="hidden bg-slate-950/75 border border-slate-800 rounded-xl px-3.5 py-2.5 text-[11px] mono flex flex-wrap items-center justify-between gap-2"></div>
+            <div id="siiInfo" class="hidden bg-slate-950/85 border border-slate-700/90 rounded-lg px-3 py-1.5 text-xs mono flex flex-wrap items-center justify-between gap-2"></div>
 
-            <!-- Search Toolbar -->
-            <div class="bg-slate-950/60 border border-slate-800/90 rounded-xl p-2.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div class="input-box flex items-center flex-1 rounded-lg px-3 py-2">
-                    <i class="fas fa-search text-slate-400 text-xs mr-2"></i>
+            <!-- Tight Search Toolbar -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5">
+                <div class="input-box flex items-center flex-1 rounded-lg px-2.5 py-1.5">
+                    <i class="fas fa-search text-sky-400 text-xs mr-2"></i>
                     <input
                         type="text"
                         id="siiSearchInput"
-                        placeholder="Search key or value (e.g. money_account, cargo_mass)..."
-                        class="bg-transparent w-full text-xs outline-none text-white"
+                        placeholder="Search key or value (Ctrl+F)..."
+                        class="bg-transparent w-full text-xs sm:text-[13px] outline-none text-white placeholder:text-slate-400"
                         oninput="runSiiSearch(true)"
                         onkeydown="handleSiiSearchKey(event)"
                     >
-                    <button type="button" id="siiSearchClearBtn" onclick="clearSiiSearch()" class="hidden text-slate-400 hover:text-white text-xs ml-2 px-1" title="Clear search">
+                    <button type="button" id="siiSearchClearBtn" onclick="clearSiiSearch()" class="hidden text-slate-300 hover:text-white text-xs ml-1.5" title="Clear (Esc)">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
 
-                <div class="flex items-center justify-between sm:justify-end gap-1.5">
-                    <span id="siiMatchCount" class="text-[11px] mono text-slate-400 px-2 min-w-[68px] text-center">0 / 0</span>
-
-                    <div class="flex items-center gap-1">
-                        <button type="button" onclick="navigateSiiMatch(-1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-2 rounded-lg text-xs transition-colors" title="Previous match (Shift+Enter)">
-                            <i class="fas fa-chevron-up"></i>
-                        </button>
-                        <button type="button" onclick="navigateSiiMatch(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-2 rounded-lg text-xs transition-colors" title="Next match (Enter)">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                        <button type="button" id="siiCaseBtn" onclick="toggleSiiCase()" class="bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 px-2.5 py-2 rounded-lg text-xs mono font-bold transition-colors" title="Match Case">
-                            Aa
-                        </button>
-                        <button type="button" id="siiFilterBtn" onclick="toggleSiiFilterLines()" class="bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 px-2.5 py-2 rounded-lg text-xs mono font-bold transition-colors" title="Show only matching lines">
-                            <i class="fas fa-filter mr-1"></i>Lines
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Decrypted Output Area -->
-            <div class="relative">
-                <div class="flex items-center justify-between mb-1.5">
-                    <label class="label-text !mb-0">Decrypted SiiNunit Output</label>
-                    <button type="button" onclick="copyDecryptedOutput()" class="icon-action-btn text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5" title="Copy Output">
-                        <i class="fas fa-copy"></i> Copy All
+                <div class="flex items-center justify-between sm:justify-end gap-1">
+                    <span id="siiMatchCount" class="text-xs mono font-semibold text-slate-200 px-1.5 min-w-[56px] text-center">0 / 0</span>
+                    <button type="button" onclick="navigateSiiMatch(-1)" class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs" title="Previous">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <button type="button" onclick="navigateSiiMatch(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs" title="Next">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <button type="button" id="siiCaseBtn" onclick="toggleSiiCase()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs mono font-bold" title="Match Case">
+                        Aa
+                    </button>
+                    <button type="button" id="siiFilterBtn" onclick="toggleSiiFilterLines()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs mono font-bold" title="Filter Lines">
+                        Lines
+                    </button>
+                    <button type="button" onclick="copyDecryptedOutput()" class="icon-action-btn text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1" title="Copy Output">
+                        <i class="fas fa-copy text-sky-400"></i> Copy
                     </button>
                 </div>
-                <pre id="siiOutput" class="input-box w-full p-3.5 rounded-xl h-[360px] lg:h-[430px] text-xs leading-relaxed outline-none overflow-auto whitespace-pre select-text text-slate-300">Decrypted SII content will appear here...</pre>
             </div>
+
+            <!-- Combined Dropzone + Decrypted Output Box -->
+            <pre id="siiOutput" class="input-box w-full flex-1 min-h-[320px] lg:min-h-0 p-3.5 rounded-xl text-[13px] leading-relaxed outline-none overflow-auto whitespace-pre select-text text-slate-200">Drag &amp; drop an .sii file anywhere here (or click Browse above) to decrypt...</pre>
         </section>
 
-        <!-- Right / Secondary Column: Live Sync Converters (5 cols on lg) -->
-        <div class="lg:col-span-5 grid grid-cols-1 gap-6">
+        <!-- Right / Secondary Column: Live Sync Converters (4 cols) -->
+        <div class="lg:col-span-4 flex flex-col gap-3 min-h-0">
 
             <!-- Weight & Float Live Sync Card -->
-            <section class="glass-card p-5 sm:p-6 flex flex-col gap-4">
+            <section class="glass-card p-3.5 flex flex-col gap-2">
                 <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                            <i class="fas fa-balance-scale text-sm"></i>
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/25 flex items-center justify-center text-sky-400">
+                            <i class="fas fa-balance-scale text-xs"></i>
                         </div>
                         <div>
-                            <h2 class="font-bold text-sm sm:text-base uppercase tracking-wide text-white">Weight &amp; Float Sync</h2>
-                            <p class="text-[11px] text-slate-400">IEEE-754 Float32 ↔ SII Hex</p>
+                            <h2 class="font-bold text-sm uppercase tracking-wide text-white leading-tight">Weight &amp; Float Sync</h2>
+                            <p class="text-xs text-slate-300 leading-tight">Cargo Mass Float32 ↔ Hex</p>
                         </div>
                     </div>
-                    <button onclick="clearSection('float')" class="text-xs text-slate-400 hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-800/70">
-                        <i class="fas fa-trash-alt mr-1"></i>Clear
+                    <button onclick="clearSection('float')" class="text-xs font-medium text-slate-300 hover:text-red-300 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-800/80">
+                        Clear
                     </button>
                 </div>
 
-                <div class="grid gap-3.5">
+                <!-- Quick Weight Presets -->
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="text-[11px] font-bold uppercase text-slate-300 mr-0.5">Presets:</span>
+                    <button type="button" onclick="applyWeightPreset(0, 'ton')" class="chip-btn">0t</button>
+                    <button type="button" onclick="applyWeightPreset(10, 'ton')" class="chip-btn">10t</button>
+                    <button type="button" onclick="applyWeightPreset(25, 'ton')" class="chip-btn">25t</button>
+                    <button type="button" onclick="applyWeightPreset(50, 'ton')" class="chip-btn">50t</button>
+                    <button type="button" onclick="applyWeightPreset(100, 'ton')" class="chip-btn">100t</button>
+                </div>
+
+                <div class="grid gap-2">
                     <div>
-                        <label class="label-text">Numeric Weight / Value</label>
-                        <div class="input-box flex overflow-hidden rounded-xl">
-                            <input type="number" step="any" id="floatInput" placeholder="0.0" class="bg-transparent w-full px-3.5 py-3 text-base outline-none" oninput="syncFloatToHex()">
+                        <label class="label-text mb-1">Weight / Value</label>
+                        <div class="input-box flex overflow-hidden rounded-lg">
+                            <input type="number" step="any" id="floatInput" placeholder="0.0" class="bg-transparent w-full px-3 py-1.5 text-sm font-semibold outline-none placeholder:text-slate-500" oninput="syncFloatToHex()">
                             <select id="unitSelector" class="unit-select" onchange="syncFloatToHex()">
                                 <option value="ton">TON</option>
                                 <option value="kg">KG</option>
@@ -302,63 +342,66 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-center text-slate-500 text-xs gap-2">
-                        <span class="h-px bg-slate-800 flex-1"></span>
-                        <i class="fas fa-arrows-alt-v text-sky-400/70"></i>
-                        <span class="h-px bg-slate-800 flex-1"></span>
-                    </div>
-
                     <div>
-                        <div class="flex items-center justify-between mb-1.5">
-                            <label class="label-text !mb-0">SII Hex Value</label>
-                            <button type="button" onclick="copyToClipboard('hexInput')" class="icon-action-btn text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1" title="Copy Hex">
-                                <i class="fas fa-copy"></i> Copy
-                            </button>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="label-text">SII Hex Value</label>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="pasteToInput('hexInput', syncHexToFloat)" class="icon-action-btn text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <i class="fas fa-paste text-sky-400"></i> Paste
+                                </button>
+                                <button type="button" onclick="copyToClipboard('hexInput')" class="icon-action-btn text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <i class="fas fa-copy text-sky-400"></i> Copy
+                                </button>
+                            </div>
                         </div>
-                        <input type="text" id="hexInput" placeholder="HEX CODE" class="input-box w-full px-3.5 py-3 rounded-xl text-base uppercase outline-none" oninput="syncHexToFloat()">
-                        <p id="floatStatus" class="text-[11px] text-sky-300/80 mt-1.5 mono min-h-[16px]"></p>
+                        <input type="text" id="hexInput" placeholder="HEX CODE" class="input-box w-full px-3 py-1.5 rounded-lg text-sm font-semibold uppercase outline-none placeholder:text-slate-500" oninput="syncHexToFloat()">
+                        <p id="floatStatus" class="text-xs text-sky-300 font-medium mt-1 mono empty:hidden"></p>
                     </div>
                 </div>
             </section>
 
             <!-- Text & String Hex Live Sync Card -->
-            <section class="glass-card p-5 sm:p-6 flex flex-col gap-4">
+            <section class="glass-card p-3.5 flex-1 flex flex-col gap-2 min-h-0">
                 <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                            <i class="fas fa-font text-sm"></i>
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400">
+                            <i class="fas fa-font text-xs"></i>
                         </div>
                         <div>
-                            <h2 class="font-bold text-sm sm:text-base uppercase tracking-wide text-white">Text &amp; String Sync</h2>
-                            <p class="text-[11px] text-slate-400">UTF-8 Plain Text ↔ Hex Bytes</p>
+                            <h2 class="font-bold text-sm uppercase tracking-wide text-white leading-tight">Text &amp; Profile Hex</h2>
+                            <p class="text-xs text-slate-300 leading-tight">Profile Name ↔ Folder Hex ID</p>
                         </div>
                     </div>
-                    <button onclick="clearSection('text')" class="text-xs text-slate-400 hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-800/70">
-                        <i class="fas fa-trash-alt mr-1"></i>Clear
+                    <button onclick="clearSection('text')" class="text-xs font-medium text-slate-300 hover:text-red-300 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-800/80">
+                        Clear
                     </button>
                 </div>
 
-                <div class="grid gap-3.5">
-                    <div>
-                        <label class="label-text">Plain Text (UTF-8)</label>
-                        <textarea id="textInput" placeholder="Type text..." class="input-box w-full p-3 rounded-xl h-24 text-xs outline-none resize-none" oninput="syncTextToHex()"></textarea>
-                    </div>
-
-                    <div class="flex items-center justify-center text-slate-500 text-xs gap-2">
-                        <span class="h-px bg-slate-800 flex-1"></span>
-                        <i class="fas fa-arrows-alt-v text-emerald-400/70"></i>
-                        <span class="h-px bg-slate-800 flex-1"></span>
-                    </div>
-
-                    <div>
-                        <div class="flex items-center justify-between mb-1.5">
-                            <label class="label-text !mb-0">Hex String</label>
-                            <button type="button" onclick="copyToClipboard('hexTextInput')" class="icon-action-btn text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1" title="Copy Hex String">
-                                <i class="fas fa-copy"></i> Copy
+                <div class="flex-1 flex flex-col gap-2 min-h-0">
+                    <div class="flex-1 flex flex-col min-h-0">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="label-text">Plain Text (UTF-8)</label>
+                            <button type="button" onclick="pasteToInput('textInput', syncTextToHex)" class="icon-action-btn text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <i class="fas fa-paste text-emerald-400"></i> Paste
                             </button>
                         </div>
-                        <textarea id="hexTextInput" placeholder="Output hex..." class="input-box w-full p-3 rounded-xl h-24 text-xs uppercase outline-none resize-none" oninput="syncHexToText()"></textarea>
-                        <p id="textStatus" class="text-[11px] text-emerald-300/80 mt-1.5 mono min-h-[16px]"></p>
+                        <textarea id="textInput" placeholder="Type text..." class="input-box w-full flex-1 min-h-[54px] px-3 py-1.5 rounded-lg text-[13px] outline-none resize-none placeholder:text-slate-500" oninput="syncTextToHex()"></textarea>
+                    </div>
+
+                    <div class="flex-1 flex flex-col min-h-0">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="label-text">Hex String (Folder ID)</label>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="pasteToInput('hexTextInput', syncHexToText)" class="icon-action-btn text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <i class="fas fa-paste text-emerald-400"></i> Paste
+                                </button>
+                                <button type="button" onclick="copyToClipboard('hexTextInput')" class="icon-action-btn text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <i class="fas fa-copy text-emerald-400"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="hexTextInput" placeholder="Output hex..." class="input-box w-full flex-1 min-h-[54px] px-3 py-1.5 rounded-lg text-[13px] font-semibold uppercase outline-none resize-none placeholder:text-slate-500" oninput="syncHexToText()"></textarea>
+                        <p id="textStatus" class="text-xs text-emerald-300 font-medium mt-1 mono empty:hidden"></p>
                     </div>
                 </div>
             </section>
@@ -369,6 +412,7 @@
     <script>
         let currentSiiFileName = 'decrypted.sii';
         let currentDecryptedText = '';
+        let currentDisplayedText = '';
 
         // Search state
         let siiMatches = [];
@@ -384,6 +428,11 @@
             0x9e, 0xdf, 0x6b, 0x11, 0x82, 0x5a, 0x5d, 0x0a
         ]);
 
+        function toggleQuickGuide() {
+            const drawer = document.getElementById('quickGuideDrawer');
+            drawer.classList.toggle('hidden');
+        }
+
         function showToast(msg = 'Copied to clipboard!') {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toastMsg');
@@ -395,12 +444,34 @@
             }, 2200);
         }
 
+        async function pasteToInput(id, callback) {
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    const txt = await navigator.clipboard.readText();
+                    if (txt) {
+                        const el = document.getElementById(id);
+                        el.value = txt;
+                        if (typeof callback === 'function') callback();
+                        showToast('Pasted from clipboard!');
+                        return;
+                    }
+                }
+            } catch (_) {}
+            document.getElementById(id).focus();
+            showToast('Press Ctrl+V to paste');
+        }
+
+        function applyWeightPreset(value, unit) {
+            document.getElementById('unitSelector').value = unit;
+            document.getElementById('floatInput').value = value;
+            syncFloatToHex();
+        }
+
         function copyToClipboard(id) {
             const el = document.getElementById(id);
             const text = el.value || '';
             if (!text) return;
 
-            // Use execCommand('copy') for reliable iFrame/sandbox support with fallback
             try {
                 const temp = document.createElement('textarea');
                 temp.value = text;
@@ -458,7 +529,7 @@
             } else {
                 document.getElementById('siiFileInput').value = '';
                 const outEl = document.getElementById('siiOutput');
-                outEl.textContent = 'Decrypted SII content will appear here...';
+                outEl.textContent = 'Drag & drop an .sii file anywhere here (or click Browse above) to decrypt...';
                 outEl.classList.add('text-slate-400');
                 document.getElementById('siiInfo').classList.add('hidden');
                 document.getElementById('siiInfo').innerHTML = '';
@@ -469,8 +540,6 @@
             }
         }
 
-        let currentDisplayedText = '';
-
         function escapeHtml(str) {
             return str
                 .replace(/&/g, '&amp;')
@@ -478,14 +547,40 @@
                 .replace(/>/g, '&gt;');
         }
 
+        // Keyboard shortcuts: Ctrl+F focuses SII search, Esc clears search
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                const searchInput = document.getElementById('siiSearchInput');
+                searchInput.focus();
+                searchInput.select();
+            } else if (e.key === 'Escape' && document.activeElement === document.getElementById('siiSearchInput')) {
+                clearSiiSearch();
+            }
+        });
+
         // --- Search Functions for Decrypted SII Output ---
         function toggleSiiCase() {
             siiCaseSensitive = !siiCaseSensitive;
             const btn = document.getElementById('siiCaseBtn');
-            btn.classList.toggle('text-sky-400', siiCaseSensitive);
+            btn.classList.toggle('text-sky-300', siiCaseSensitive);
             btn.classList.toggle('border-sky-400', siiCaseSensitive);
-            btn.classList.toggle('text-slate-400', !siiCaseSensitive);
-            btn.classList.toggle('border-slate-700', !siiCaseSensitive);
+            btn.classList.toggle('bg-sky-500/20', siiCaseSensitive);
+            btn.classList.toggle('text-slate-200', !siiCaseSensitive);
+            btn.classList.toggle('border-slate-600/70', !siiCaseSensitive);
+            btn.classList.toggle('bg-slate-800', !siiCaseSensitive);
+            runSiiSearch(true);
+        }
+
+        function toggleSiiFilterLines() {
+            siiFilterLinesMode = !siiFilterLinesMode;
+            const btn = document.getElementById('siiFilterBtn');
+            btn.classList.toggle('text-amber-300', siiFilterLinesMode);
+            btn.classList.toggle('border-amber-400', siiFilterLinesMode);
+            btn.classList.toggle('bg-amber-500/20', siiFilterLinesMode);
+            btn.classList.toggle('text-slate-200', !siiFilterLinesMode);
+            btn.classList.toggle('border-slate-600/70', !siiFilterLinesMode);
+            btn.classList.toggle('bg-slate-800', !siiFilterLinesMode);
             runSiiSearch(true);
         }
 
@@ -525,7 +620,6 @@
                 return;
             }
 
-            // Cap inline DOM spans on huge files to keep rendering instant
             const MAX_HIGHLIGHTS = 2000;
             const limit = Math.min(matches.length, MAX_HIGHLIGHTS);
             const parts = [];
@@ -564,7 +658,6 @@
                 return;
             }
 
-            // Trim only leading/trailing newline characters, preserve exact spaces inside query
             const query = queryRaw.replace(/[\r\n]+/g, '');
 
             if (!query) {
@@ -648,17 +741,36 @@
             });
         }
 
-        // Drag & Drop support
-        const dropZone = document.getElementById('dropZone');
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-sky-400');
+        // Global Drag & Drop Support
+        let dragCounter = 0;
+        const globalOverlay = document.getElementById('globalDropOverlay');
+
+        window.addEventListener('dragenter', (e) => {
+            if (e.dataTransfer?.types?.includes('Files')) {
+                dragCounter++;
+                globalOverlay.classList.remove('hidden');
+                globalOverlay.classList.add('flex');
+            }
         });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-sky-400'));
-        dropZone.addEventListener('drop', (e) => {
+
+        window.addEventListener('dragleave', () => {
+            dragCounter = Math.max(0, dragCounter - 1);
+            if (dragCounter === 0) {
+                globalOverlay.classList.add('hidden');
+                globalOverlay.classList.remove('flex');
+            }
+        });
+
+        window.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropZone.classList.remove('border-sky-400');
-            if (e.dataTransfer.files?.length) {
+        });
+
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragCounter = 0;
+            globalOverlay.classList.add('hidden');
+            globalOverlay.classList.remove('flex');
+            if (e.dataTransfer?.files?.length) {
                 processSiiFile(e.dataTransfer.files[0]);
             }
         });
@@ -1014,23 +1126,24 @@
                     finalText = new TextDecoder('utf-8', { fatal: false }).decode(data);
                 }
 
-                // Normalize CRLF (\r\n) to LF (\n) so character offsets and line numbers match 1:1
                 finalText = finalText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
                 currentDecryptedText = finalText;
                 currentDisplayedText = finalText;
                 outEl.textContent = finalText;
+                outEl.classList.remove('text-slate-400');
                 dlBtn.disabled = false;
 
                 if (document.getElementById('siiSearchInput').value) {
                     runSiiSearch(true);
                 }
 
+                const lineCount = finalText.split('\n').length;
                 infoEl.classList.remove('hidden');
                 infoEl.innerHTML = `
                     <div class="text-slate-200"><span class="text-slate-400">File:</span> ${file.name} (${buf.byteLength.toLocaleString()} B)</div>
                     <div class="text-emerald-400">${stages.join('  →  ')}</div>
-                    <div class="text-slate-300">${finalText.length.toLocaleString()} chars</div>
+                    <div class="text-slate-300">${lineCount.toLocaleString()} lines • ${finalText.length.toLocaleString()} chars</div>
                 `;
                 showToast('SII decrypted successfully!');
             } catch (err) {
@@ -1111,7 +1224,7 @@
             if (!txt) { target.value = ''; status.textContent = ''; return; }
             const bytes = new TextEncoder().encode(txt);
             target.value = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('');
-            status.textContent = `Bytes: ${bytes.length}`;
+            status.textContent = `Bytes: ${bytes.length} • Folder ID ready`;
         }
 
         function syncHexToText() {
