@@ -136,6 +136,30 @@
             box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.45);
         }
 
+        .sii-wrap {
+            white-space: pre-wrap !important;
+            word-break: break-all;
+        }
+
+        .quick-tag-btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.85);
+            color: #94a3b8;
+            border: 1px solid rgba(51, 65, 85, 0.8);
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+
+        .quick-tag-btn:hover {
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.5);
+            background: rgba(30, 41, 59, 0.9);
+        }
+
         textarea::-webkit-scrollbar,
         pre::-webkit-scrollbar {
             width: 8px;
@@ -244,6 +268,11 @@
                     </label>
                     <input type="file" id="siiFileInput" class="hidden" onchange="handleSiiFile(event)">
 
+                    <button id="editSiiBtn" onclick="toggleSiiEditMode()" disabled
+                        class="text-xs bg-slate-800 hover:bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1">
+                        <i class="fas fa-pen-to-square"></i><span>Edit</span>
+                    </button>
+
                     <button id="downloadSiiBtn" onclick="downloadDecryptedSii()" disabled
                         class="text-xs bg-sky-400 text-slate-950 px-3 py-1 rounded-lg font-extrabold hover:bg-sky-300 disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed transition-all">
                         <i class="fas fa-download mr-1"></i>Download
@@ -255,8 +284,19 @@
                 </div>
             </div>
 
-            <!-- Pipeline Status Banner -->
+            <!-- Pipeline Status Banner & Smart Telemetry -->
             <div id="siiInfo" class="hidden bg-slate-950/85 border border-slate-700/90 rounded-lg px-3 py-1.5 text-xs mono flex flex-wrap items-center justify-between gap-2"></div>
+
+            <!-- Quick Jump Tags (Common SII Keys) -->
+            <div id="siiQuickTags" class="hidden flex-wrap items-center gap-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5"><i class="fas fa-bolt text-amber-400 mr-1"></i>Jump:</span>
+                <button type="button" onclick="quickSearchTag('money_account')" class="quick-tag-btn">money_account</button>
+                <button type="button" onclick="quickSearchTag('experience_points')" class="quick-tag-btn">experience_points</button>
+                <button type="button" onclick="quickSearchTag('profile_name')" class="quick-tag-btn">profile_name</button>
+                <button type="button" onclick="quickSearchTag('cargo_mass')" class="quick-tag-btn">cargo_mass</button>
+                <button type="button" onclick="quickSearchTag('my_truck')" class="quick-tag-btn">my_truck</button>
+                <button type="button" onclick="quickSearchTag('assigned_truck')" class="quick-tag-btn">assigned_truck</button>
+            </div>
 
             <!-- Tight Search Toolbar -->
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5">
@@ -275,8 +315,8 @@
                     </button>
                 </div>
 
-                <div class="flex items-center justify-between sm:justify-end gap-1">
-                    <span id="siiMatchCount" class="text-xs mono font-semibold text-slate-200 px-1.5 min-w-[56px] text-center">0 / 0</span>
+                <div class="flex items-center justify-between sm:justify-end gap-1 flex-wrap">
+                    <span id="siiMatchCount" class="text-xs mono font-semibold text-slate-200 px-1.5 min-w-[52px] text-center">0 / 0</span>
                     <button type="button" onclick="navigateSiiMatch(-1)" class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs" title="Previous">
                         <i class="fas fa-chevron-up"></i>
                     </button>
@@ -286,8 +326,11 @@
                     <button type="button" id="siiCaseBtn" onclick="toggleSiiCase()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs mono font-bold" title="Match Case">
                         Aa
                     </button>
-                    <button type="button" id="siiFilterBtn" onclick="toggleSiiFilterLines()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs mono font-bold" title="Filter Lines">
+                    <button type="button" id="siiFilterBtn" onclick="toggleSiiFilterLines()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs mono font-bold" title="Filter Matching Lines Only">
                         Lines
+                    </button>
+                    <button type="button" id="siiWrapBtn" onclick="toggleSiiWrap()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/70 px-2.5 py-1 rounded-lg text-xs mono font-bold" title="Toggle Word Wrap">
+                        Wrap
                     </button>
                     <button type="button" onclick="copyDecryptedOutput()" class="icon-action-btn text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1" title="Copy Output">
                         <i class="fas fa-copy text-sky-400"></i> Copy
@@ -295,8 +338,22 @@
                 </div>
             </div>
 
-            <!-- Combined Dropzone + Decrypted Output Box -->
-            <pre id="siiOutput" class="input-box w-full flex-1 min-h-[320px] lg:min-h-0 p-3.5 rounded-xl text-[13px] leading-relaxed outline-none overflow-auto whitespace-pre select-text text-slate-200">Drag &amp; drop an .sii file anywhere here (or click Browse above) to decrypt...</pre>
+            <!-- Combined Dropzone + Chunk Bar + Decrypted Output Box + Inline Editor -->
+            <div class="relative flex-1 min-h-[320px] lg:min-h-0 flex flex-col gap-1.5">
+                <div id="siiChunkBar" class="hidden items-center justify-between gap-2 bg-slate-900/95 border border-amber-500/35 rounded-lg px-2.5 py-1 text-xs mono">
+                    <div class="text-amber-300 flex items-center gap-1.5">
+                        <i class="fas fa-gauge-high"></i>
+                        <span id="siiLargeNotice">Large SII mode active (fast rendering &amp; part editing)</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="changeSiiChunk(-1)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/70 cursor-pointer">Prev Part</button>
+                        <span id="siiChunkLabel" class="px-2 text-sky-300 font-bold">Part 1 / 1</span>
+                        <button type="button" onclick="changeSiiChunk(1)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/70 cursor-pointer">Next Part</button>
+                    </div>
+                </div>
+                <pre id="siiOutput" onclick="handleSiiOutputClick(event)" title="Click text to edit directly" class="input-box w-full flex-1 p-3.5 rounded-xl text-[13px] leading-relaxed outline-none overflow-auto whitespace-pre select-text text-slate-400 cursor-pointer">Drag &amp; drop an .sii file anywhere here (or click here / Browse above) to decrypt...</pre>
+                <textarea id="siiEditor" oninput="syncEditorToText()" class="hidden input-box w-full flex-1 p-3.5 rounded-xl text-[13px] leading-relaxed outline-none overflow-auto whitespace-pre text-amber-100 border-amber-400/60 resize-none" spellcheck="false"></textarea>
+            </div>
         </section>
 
         <!-- Right / Secondary Column: Live Sync Converters (4 cols) -->
@@ -354,7 +411,7 @@
                                 </button>
                             </div>
                         </div>
-                        <input type="text" id="hexInput" placeholder="HEX CODE" class="input-box w-full px-3 py-1.5 rounded-lg text-sm font-semibold uppercase outline-none placeholder:text-slate-500" oninput="syncHexToFloat()">
+                        <input type="text" id="hexInput" placeholder="HEX CODE (e.g. &461c4000)" class="input-box w-full px-3 py-1.5 rounded-lg text-sm font-semibold uppercase outline-none placeholder:text-slate-500" oninput="syncHexToFloat()">
                         <p id="floatStatus" class="text-xs text-sky-300 font-medium mt-1 mono empty:hidden"></p>
                     </div>
                 </div>
@@ -413,6 +470,16 @@
         let currentSiiFileName = 'decrypted.sii';
         let currentDecryptedText = '';
         let currentDisplayedText = '';
+        let isSiiEditMode = false;
+        let isSiiWrapped = false;
+
+        // Large-file rendering & pagination state (prevents DOM freeze on 24MB+ SII files)
+        const LARGE_FILE_THRESHOLD_CHARS = 1500000; // ~1.5 MB text
+        const CHUNK_SIZE_CHARS = 350000;
+        let totalChunks = 1;
+        let activeChunkIndex = 0;
+        let isLargeFileMode = false;
+        let searchDebounceTimer = null;
 
         // Search state
         let siiMatches = [];
@@ -527,17 +594,169 @@
                 document.getElementById('hexTextInput').value = '';
                 document.getElementById('textStatus').textContent = '';
             } else {
+                if (isSiiEditMode) toggleSiiEditMode(false);
+                clearTimeout(searchDebounceTimer);
                 document.getElementById('siiFileInput').value = '';
                 const outEl = document.getElementById('siiOutput');
-                outEl.textContent = 'Drag & drop an .sii file anywhere here (or click Browse above) to decrypt...';
-                outEl.classList.add('text-slate-400');
+                outEl.textContent = 'Drag & drop an .sii file anywhere here (or click here / Browse above) to decrypt...';
+                outEl.classList.add('text-slate-400', 'cursor-pointer');
+                outEl.classList.remove('text-slate-200');
                 document.getElementById('siiInfo').classList.add('hidden');
                 document.getElementById('siiInfo').innerHTML = '';
+                document.getElementById('siiQuickTags').classList.add('hidden');
+                document.getElementById('siiQuickTags').classList.remove('flex');
+                document.getElementById('siiChunkBar').classList.add('hidden');
+                document.getElementById('siiChunkBar').classList.remove('flex');
                 document.getElementById('downloadSiiBtn').disabled = true;
+                document.getElementById('editSiiBtn').disabled = true;
                 currentDecryptedText = '';
                 currentDisplayedText = '';
+                isLargeFileMode = false;
+                totalChunks = 1;
+                activeChunkIndex = 0;
                 clearSiiSearch();
             }
+        }
+
+        function getChunkSlice(text, chunkIdx) {
+            const start = chunkIdx * CHUNK_SIZE_CHARS;
+            const end = Math.min(text.length, start + CHUNK_SIZE_CHARS);
+            return { text: text.slice(start, end), start, end };
+        }
+
+        function updateChunkBarUI() {
+            const bar = document.getElementById('siiChunkBar');
+            const label = document.getElementById('siiChunkLabel');
+            if (!isLargeFileMode || totalChunks <= 1) {
+                bar.classList.add('hidden');
+                bar.classList.remove('flex');
+                return;
+            }
+            bar.classList.remove('hidden');
+            bar.classList.add('flex');
+            label.textContent = `Part ${activeChunkIndex + 1} / ${totalChunks}`;
+        }
+
+        function renderActiveChunk(jumpTop = true) {
+            const outEl = document.getElementById('siiOutput');
+            if (!currentDecryptedText) return;
+
+            if (!isLargeFileMode) {
+                currentDisplayedText = currentDecryptedText;
+                outEl.textContent = currentDecryptedText;
+                updateChunkBarUI();
+                return;
+            }
+
+            const slice = getChunkSlice(currentDecryptedText, activeChunkIndex);
+            currentDisplayedText = slice.text;
+            outEl.textContent = slice.text;
+            if (jumpTop) outEl.scrollTop = 0;
+            updateChunkBarUI();
+        }
+
+        function changeSiiChunk(delta) {
+            if (!isLargeFileMode || totalChunks <= 1) return;
+            if (isSiiEditMode) {
+                commitActiveEditorToFullText();
+            }
+            activeChunkIndex = (activeChunkIndex + delta + totalChunks) % totalChunks;
+            if (isSiiEditMode) {
+                const edEl = document.getElementById('siiEditor');
+                const slice = getChunkSlice(currentDecryptedText, activeChunkIndex);
+                edEl.value = slice.text;
+                currentDisplayedText = slice.text;
+                updateChunkBarUI();
+            } else {
+                renderActiveChunk(true);
+            }
+            const q = document.getElementById('siiSearchInput').value.trim();
+            if (q && !isSiiEditMode) runSiiSearch(false, true);
+        }
+
+        function triggerBrowseIfEmpty() {
+            if (!currentDecryptedText && !isSiiEditMode) {
+                document.getElementById('siiFileInput').click();
+            }
+        }
+
+        function handleSiiOutputClick(event) {
+            if (!currentDecryptedText) {
+                triggerBrowseIfEmpty();
+                return;
+            }
+            if (isSiiEditMode) return;
+            // Ignore clicks on search highlight marks if user wants to navigate, or enter edit mode on text click
+            if (event && event.target && event.target.closest && event.target.closest('mark')) return;
+            toggleSiiEditMode(true);
+        }
+
+        function quickSearchTag(tag) {
+            if (isSiiEditMode) toggleSiiEditMode(false);
+            const input = document.getElementById('siiSearchInput');
+            input.value = tag;
+            runSiiSearch(true, true);
+        }
+
+        function toggleSiiWrap() {
+            isSiiWrapped = !isSiiWrapped;
+            const outEl = document.getElementById('siiOutput');
+            const edEl = document.getElementById('siiEditor');
+            const btn = document.getElementById('siiWrapBtn');
+
+            outEl.classList.toggle('sii-wrap', isSiiWrapped);
+            edEl.classList.toggle('sii-wrap', isSiiWrapped);
+
+            btn.classList.toggle('text-sky-300', isSiiWrapped);
+            btn.classList.toggle('border-sky-400', isSiiWrapped);
+            btn.classList.toggle('bg-sky-500/20', isSiiWrapped);
+            btn.classList.toggle('text-slate-200', !isSiiWrapped);
+            btn.classList.toggle('border-slate-600/70', !isSiiWrapped);
+            btn.classList.toggle('bg-slate-800', !isSiiWrapped);
+        }
+
+        function toggleSiiEditMode(forceState) {
+            if (!currentDecryptedText) return;
+            const nextState = typeof forceState === 'boolean' ? forceState : !isSiiEditMode;
+
+            if (nextState && currentDecryptedText.length > 8000000) {
+                showToast('File >8MB: use Download & external editor for best speed');
+                return;
+            }
+
+            isSiiEditMode = nextState;
+
+            const outEl = document.getElementById('siiOutput');
+            const edEl = document.getElementById('siiEditor');
+            const btn = document.getElementById('editSiiBtn');
+
+            if (isSiiEditMode) {
+                edEl.value = currentDecryptedText;
+                outEl.classList.add('hidden');
+                edEl.classList.remove('hidden');
+                edEl.focus();
+                btn.innerHTML = '<i class="fas fa-eye"></i><span>Preview</span>';
+                btn.classList.add('bg-amber-400', 'text-slate-950');
+                btn.classList.remove('bg-slate-800', 'text-amber-300');
+                showToast('Inline Edit Mode enabled');
+            } else {
+                edEl.classList.add('hidden');
+                outEl.classList.remove('hidden');
+                btn.innerHTML = '<i class="fas fa-pen-to-square"></i><span>Edit</span>';
+                btn.classList.remove('bg-amber-400', 'text-slate-950');
+                btn.classList.add('bg-slate-800', 'text-amber-300');
+                isLargeFileMode = currentDecryptedText.length > LARGE_FILE_THRESHOLD_CHARS;
+                totalChunks = isLargeFileMode ? Math.ceil(currentDecryptedText.length / CHUNK_SIZE_CHARS) : 1;
+                activeChunkIndex = 0;
+                renderActiveChunk(false);
+                runSiiSearch(false, true);
+            }
+        }
+
+        function syncEditorToText() {
+            const edEl = document.getElementById('siiEditor');
+            currentDecryptedText = edEl.value;
+            currentDisplayedText = edEl.value;
         }
 
         function escapeHtml(str) {
@@ -569,7 +788,7 @@
             btn.classList.toggle('text-slate-200', !siiCaseSensitive);
             btn.classList.toggle('border-slate-600/70', !siiCaseSensitive);
             btn.classList.toggle('bg-slate-800', !siiCaseSensitive);
-            runSiiSearch(true);
+            runSiiSearch(true, true);
         }
 
         function toggleSiiFilterLines() {
@@ -581,34 +800,26 @@
             btn.classList.toggle('text-slate-200', !siiFilterLinesMode);
             btn.classList.toggle('border-slate-600/70', !siiFilterLinesMode);
             btn.classList.toggle('bg-slate-800', !siiFilterLinesMode);
-            runSiiSearch(true);
-        }
-
-        function toggleSiiFilterLines() {
-            siiFilterLinesMode = !siiFilterLinesMode;
-            const btn = document.getElementById('siiFilterBtn');
-            btn.classList.toggle('text-amber-400', siiFilterLinesMode);
-            btn.classList.toggle('border-amber-400', siiFilterLinesMode);
-            btn.classList.toggle('text-slate-400', !siiFilterLinesMode);
-            btn.classList.toggle('border-slate-700', !siiFilterLinesMode);
-            runSiiSearch(true);
+            runSiiSearch(true, true);
         }
 
         function clearSiiSearch() {
+            clearTimeout(searchDebounceTimer);
             document.getElementById('siiSearchInput').value = '';
             document.getElementById('siiSearchClearBtn').classList.add('hidden');
             document.getElementById('siiMatchCount').textContent = '0 / 0';
             siiMatches = [];
             siiMatchIdx = -1;
             if (currentDecryptedText) {
-                currentDisplayedText = currentDecryptedText;
-                document.getElementById('siiOutput').textContent = currentDecryptedText;
+                renderActiveChunk(false);
             }
         }
 
         function handleSiiSearchKey(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                clearTimeout(searchDebounceTimer);
+                runSiiSearch(false, true);
                 navigateSiiMatch(e.shiftKey ? -1 : 1);
             }
         }
@@ -620,13 +831,14 @@
                 return;
             }
 
-            const MAX_HIGHLIGHTS = 2000;
+            const MAX_HIGHLIGHTS = 400;
             const limit = Math.min(matches.length, MAX_HIGHLIGHTS);
             const parts = [];
             let cursor = 0;
 
             for (let i = 0; i < limit; i++) {
                 const m = matches[i];
+                if (m.start < cursor || m.end > text.length) continue;
                 if (m.start > cursor) {
                     parts.push(escapeHtml(text.slice(cursor, m.start)));
                 }
@@ -643,7 +855,7 @@
             outEl.innerHTML = parts.join('');
         }
 
-        function runSiiSearch(jumpToFirst = false) {
+        function runSiiSearch(jumpToFirst = false, immediate = false) {
             const queryRaw = document.getElementById('siiSearchInput').value;
             const clearBtn = document.getElementById('siiSearchClearBtn');
             const countEl = document.getElementById('siiMatchCount');
@@ -661,25 +873,43 @@
             const query = queryRaw.replace(/[\r\n]+/g, '');
 
             if (!query) {
-                currentDisplayedText = currentDecryptedText;
-                outEl.textContent = currentDecryptedText;
+                renderActiveChunk(false);
                 siiMatches = [];
                 siiMatchIdx = -1;
                 countEl.textContent = '0 / 0';
                 return;
             }
 
-            let displayText = currentDecryptedText;
+            if (isLargeFileMode && !immediate) {
+                countEl.textContent = '...';
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => runSiiSearch(jumpToFirst, true), 180);
+                return;
+            }
+
+            let sourceText = currentDecryptedText;
+            if (isLargeFileMode) {
+                const slice = getChunkSlice(currentDecryptedText, activeChunkIndex);
+                sourceText = slice.text;
+            }
+
+            let displayText = sourceText;
             if (siiFilterLinesMode) {
-                const lines = currentDecryptedText.split('\n');
+                const lines = sourceText.split('\n');
                 const needle = siiCaseSensitive ? query : query.toLowerCase();
                 const matchedLines = [];
-                lines.forEach((line, idx) => {
+                const maxFilteredLines = 4000;
+                for (let idx = 0; idx < lines.length; idx++) {
+                    const line = lines[idx];
                     const hay = siiCaseSensitive ? line : line.toLowerCase();
                     if (hay.includes(needle)) {
                         matchedLines.push(`[L${idx + 1}] ${line}`);
+                        if (matchedLines.length >= maxFilteredLines) {
+                            matchedLines.push(`... (capped at ${maxFilteredLines} matching lines in current view for speed)`);
+                            break;
+                        }
                     }
-                });
+                }
                 displayText = matchedLines.length
                     ? matchedLines.join('\n')
                     : `No lines matching "${query}"`;
@@ -692,7 +922,8 @@
                 const hay = siiCaseSensitive ? displayText : displayText.toLowerCase();
                 const needle = siiCaseSensitive ? query : query.toLowerCase();
                 let startPos = 0;
-                while (startPos <= hay.length - needle.length) {
+                const maxMatches = isLargeFileMode ? 1500 : 5000;
+                while (startPos <= hay.length - needle.length && siiMatches.length < maxMatches) {
                     const idx = hay.indexOf(needle, startPos);
                     if (idx === -1) break;
                     siiMatches.push({ start: idx, end: idx + needle.length });
@@ -781,6 +1012,9 @@
         }
 
         function downloadDecryptedSii() {
+            if (isSiiEditMode) {
+                commitActiveEditorToFullText();
+            }
             if (!currentDecryptedText) return;
             const blob = new Blob([currentDecryptedText], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
@@ -837,22 +1071,30 @@
         function decodeBSII(bytes) {
             const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
             let pos = 0;
+            const textDecoder = new TextDecoder('utf-8', { fatal: false });
 
-            const readU8 = () => view.getUint8(pos++);
-            const readU16 = () => { const v = view.getUint16(pos, true); pos += 2; return v; };
-            const readI16 = () => { const v = view.getInt16(pos, true); pos += 2; return v; };
-            const readI32 = () => { const v = view.getInt32(pos, true); pos += 4; return v; };
-            const readU32 = () => { const v = view.getUint32(pos, true); pos += 4; return v; };
-            const readI64 = () => { const v = view.getBigInt64(pos, true); pos += 8; return v; };
-            const readU64 = () => { const v = view.getBigUint64(pos, true); pos += 8; return v; };
-            const readF32 = () => { const v = view.getFloat32(pos, true); pos += 4; return v; };
+            const ensureBytes = (n) => {
+                if (pos + n > bytes.length) {
+                    throw new Error(`Unexpected end of BSII stream at offset ${pos} (needed ${n} bytes, ${bytes.length - pos} left)`);
+                }
+            };
+
+            const readU8 = () => { ensureBytes(1); return view.getUint8(pos++); };
+            const readU16 = () => { ensureBytes(2); const v = view.getUint16(pos, true); pos += 2; return v; };
+            const readI16 = () => { ensureBytes(2); const v = view.getInt16(pos, true); pos += 2; return v; };
+            const readI32 = () => { ensureBytes(4); const v = view.getInt32(pos, true); pos += 4; return v; };
+            const readU32 = () => { ensureBytes(4); const v = view.getUint32(pos, true); pos += 4; return v; };
+            const readI64 = () => { ensureBytes(8); const v = view.getBigInt64(pos, true); pos += 8; return v; };
+            const readU64 = () => { ensureBytes(8); const v = view.getBigUint64(pos, true); pos += 8; return v; };
+            const readF32 = () => { ensureBytes(4); const v = view.getFloat32(pos, true); pos += 4; return v; };
 
             const readString = () => {
                 const len = readU32();
                 if (len === 0) return '';
-                const strBytes = bytes.slice(pos, pos + len);
+                ensureBytes(len);
+                const strBytes = bytes.subarray(pos, pos + len);
                 pos += len;
-                return new TextDecoder('utf-8').decode(strBytes);
+                return textDecoder.decode(strBytes);
             };
 
             const magic = getMagic(bytes);
@@ -888,17 +1130,49 @@
             }
 
             function readUnitPtr() {
+                if (pos >= bytes.length) return 'null';
                 const len = readU8();
                 if (len === 0) return 'null';
                 if (len === 255) {
+                    if (pos + 8 > bytes.length) {
+                        const rem = bytes.length - pos;
+                        let partialId = 0n;
+                        for (let i = 0; i < rem; i++) {
+                            partialId |= BigInt(view.getUint8(pos++)) << BigInt(i * 8);
+                        }
+                        return `_nameless.${partialId.toString(16).padStart(4, '0')}`;
+                    }
                     const id = readU64();
                     return `_nameless.${id.toString(16).padStart(4, '0')}`;
                 }
+                if (len > 32) {
+                    const rem = bytes.length - pos;
+                    if (rem < len * 8) {
+                        pos = bytes.length;
+                        return `_truncated_ptr_0x${len.toString(16)}`;
+                    }
+                }
                 const parts = [];
                 for (let i = 0; i < len; i++) {
+                    if (pos + 8 > bytes.length) {
+                        pos = bytes.length;
+                        parts.push('truncated');
+                        break;
+                    }
                     parts.push(decodeEncodedString(readU64()));
                 }
                 return parts.join('.');
+            }
+
+            function readPlacement() {
+                const x = formatFloat(readF32()), y = formatFloat(readF32()), z = formatFloat(readF32());
+                if (version >= 2) {
+                    readI32();
+                    const qw = formatFloat(readF32()), qx = formatFloat(readF32()), qy = formatFloat(readF32()), qz = formatFloat(readF32());
+                    return `(${x}, ${y}, ${z}) (${qw}; ${qx}, ${qy}, ${qz})`;
+                }
+                const qw = formatFloat(readF32()), qx = formatFloat(readF32()), qy = formatFloat(readF32()), qz = formatFloat(readF32());
+                return `(${x}, ${y}, ${z}) (${qw}; ${qx}, ${qy}, ${qz})`;
             }
 
             function readValue(typeId) {
@@ -925,6 +1199,12 @@
                         return arr;
                     }
                     case 0x07: return `(${formatFloat(readF32())}, ${formatFloat(readF32())})`;
+                    case 0x08: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(`(${formatFloat(readF32())}, ${formatFloat(readF32())})`);
+                        return arr;
+                    }
                     case 0x09: return `(${formatFloat(readF32())}, ${formatFloat(readF32())}, ${formatFloat(readF32())})`;
                     case 0x0A: {
                         const count = readU32();
@@ -944,6 +1224,16 @@
                         for (let i = 0; i < count; i++) arr.push(`(${readI32()}, ${readI32()}, ${readI32()})`);
                         return arr;
                     }
+                    case 0x13: {
+                        const a = readI32(), b = readI32(), c = readI32(), d = readI32();
+                        return `(${a}, ${b}, ${c}, ${d})`;
+                    }
+                    case 0x14: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(`(${readI32()}, ${readI32()}, ${readI32()}, ${readI32()})`);
+                        return arr;
+                    }
                     case 0x17:
                         return `(${formatFloat(readF32())}; ${formatFloat(readF32())}, ${formatFloat(readF32())}, ${formatFloat(readF32())})`;
                     case 0x18: {
@@ -954,19 +1244,12 @@
                         }
                         return arr;
                     }
-                    case 0x19: {
-                        const x = formatFloat(readF32()), y = formatFloat(readF32()), z = formatFloat(readF32());
-                        const qw = formatFloat(readF32()), qx = formatFloat(readF32()), qy = formatFloat(readF32()), qz = formatFloat(readF32());
-                        return `(${x}, ${y}, ${z}) (${qw}; ${qx}, ${qy}, ${qz})`;
-                    }
+                    case 0x19:
+                        return readPlacement();
                     case 0x1A: {
                         const count = readU32();
                         const arr = [];
-                        for (let i = 0; i < count; i++) {
-                            const x = formatFloat(readF32()), y = formatFloat(readF32()), z = formatFloat(readF32());
-                            const qw = formatFloat(readF32()), qx = formatFloat(readF32()), qy = formatFloat(readF32()), qz = formatFloat(readF32());
-                            arr.push(`(${x}, ${y}, ${z}) (${qw}; ${qx}, ${qy}, ${qz})`);
-                        }
+                        for (let i = 0; i < count; i++) arr.push(readPlacement());
                         return arr;
                     }
                     case 0x25: return String(readI32());
@@ -984,11 +1267,24 @@
                         return arr;
                     }
                     case 0x29: return String(readI16());
+                    case 0x2A: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(String(readI16()));
+                        return arr;
+                    }
                     case 0x2B: return String(readU16());
                     case 0x2C: {
                         const count = readU32();
                         const arr = [];
                         for (let i = 0; i < count; i++) arr.push(String(readU16()));
+                        return arr;
+                    }
+                    case 0x2F: return String(readI64());
+                    case 0x30: {
+                        const count = readU32();
+                        const arr = [];
+                        for (let i = 0; i < count; i++) arr.push(String(readI64()));
                         return arr;
                     }
                     case 0x31: return String(readI64());
@@ -1041,46 +1337,94 @@
             const structures = {};
             const lines = ['SiiNunit', '{'];
 
+            function parseStructureDefinition() {
+                const structId = readU32();
+                const structName = readString();
+                const fields = [];
+                while (true) {
+                    const fieldType = readU32();
+                    if (fieldType === 0) break;
+                    const fieldName = readString();
+                    let ordMap = null;
+                    if (fieldType === 0x37) {
+                        ordMap = readValue(0x37);
+                    }
+                    fields.push({ fieldType, fieldName, ordMap });
+                }
+                structures[structId] = { structName, fields };
+                return structId;
+            }
+
             while (pos < bytes.length) {
                 const blockType = readU32();
                 if (blockType === 0) {
                     const validity = readU8();
                     if (validity === 0) break;
-                    const structId = readU32();
-                    const structName = readString();
-                    const fields = [];
-                    while (true) {
-                        const fieldType = readU32();
-                        if (fieldType === 0) break;
-                        const fieldName = readString();
-                        let ordMap = null;
-                        if (fieldType === 0x37) {
-                            ordMap = readValue(0x37);
+                    if (validity === 1) {
+                        parseStructureDefinition();
+                    } else if (validity === 2 && version >= 3) {
+                        const definedId = parseStructureDefinition();
+                        const struct = structures[definedId];
+                        const unitName = readUnitPtr();
+                        lines.push(`${struct.structName} : ${unitName} {`);
+                        for (const field of struct.fields) {
+                            if (field.fieldType === 0x37) {
+                                const selected = readU32();
+                                const strVal = field.ordMap?.[selected] ?? '';
+                                lines.push(` ${field.fieldName}: ${JSON.stringify(strVal)}`);
+                                continue;
+                            }
+                            const val = readValue(field.fieldType);
+                            if (Array.isArray(val)) {
+                                lines.push(` ${field.fieldName}: ${val.length}`);
+                                for (let i = 0; i < val.length; i++) {
+                                    lines.push(` ${field.fieldName}[${i}]: ${val[i]}`);
+                                }
+                            } else {
+                                lines.push(` ${field.fieldName}: ${val}`);
+                            }
                         }
-                        fields.push({ fieldType, fieldName, ordMap });
+                        lines.push('}', '');
+                    } else {
+                        throw new Error(`Unsupported BSII block validity ${validity} at offset ${pos}`);
                     }
-                    structures[structId] = { structName, fields };
                 } else {
                     const struct = structures[blockType];
-                    if (!struct) throw new Error(`Missing BSII structure definition for ID ${blockType}`);
+                    if (!struct) {
+                        const unitName = readUnitPtr();
+                        const hexId = blockType.toString(16);
+                        lines.push(`// [WARN] Missing BSII structure definition for ID ${blockType} (0x${hexId}) at offset ${pos}`);
+                        lines.push(`unknown_unit_0x${hexId} : ${unitName} {`, '}', '');
+                        continue;
+                    }
                     const unitName = readUnitPtr();
                     lines.push(`${struct.structName} : ${unitName} {`);
 
                     for (const field of struct.fields) {
-                        if (field.fieldType === 0x37) {
-                            const selected = readU32();
-                            const strVal = field.ordMap?.[selected] ?? '';
-                            lines.push(` ${field.fieldName}: ${JSON.stringify(strVal)}`);
-                            continue;
+                        if (pos >= bytes.length) {
+                            lines.push(` // [WARN] Reached end of stream while reading field "${field.fieldName}"`);
+                            break;
                         }
-                        const val = readValue(field.fieldType);
-                        if (Array.isArray(val)) {
-                            lines.push(` ${field.fieldName}: ${val.length}`);
-                            for (let i = 0; i < val.length; i++) {
-                                lines.push(` ${field.fieldName}[${i}]: ${val[i]}`);
+                        try {
+                            if (field.fieldType === 0x37) {
+                                const selected = readU32();
+                                const strVal = field.ordMap?.[selected] ?? '';
+                                lines.push(` ${field.fieldName}: ${JSON.stringify(strVal)}`);
+                                continue;
                             }
-                        } else {
-                            lines.push(` ${field.fieldName}: ${val}`);
+                            const val = readValue(field.fieldType);
+                            if (Array.isArray(val)) {
+                                lines.push(` ${field.fieldName}: ${val.length}`);
+                                for (let i = 0; i < val.length; i++) {
+                                    lines.push(` ${field.fieldName}[${i}]: ${val[i]}`);
+                                }
+                            } else {
+                                lines.push(` ${field.fieldName}: ${val}`);
+                            }
+                        } catch (fieldErr) {
+                            lines.push(` // [WARN] Field "${field.fieldName}" (0x${field.fieldType.toString(16)}) stopped at offset ${pos}: ${fieldErr.message}`);
+                            pos = bytes.length;
+                            break;
                         }
                     }
                     lines.push('}', '');
@@ -1091,14 +1435,39 @@
             return lines.join('\n');
         }
 
+        function extractQuickTelemetry(text) {
+            const sample = text.length > 4000000 ? text.slice(0, 2000000) + '\n' + text.slice(-2000000) : text;
+            const moneyMatch = sample.match(/money_account:\s*(\d+)/);
+            const xpMatch = sample.match(/experience_points:\s*(\d+)/);
+            const nameMatch = sample.match(/profile_name:\s*"([^"]+)"/);
+            const telemetry = [];
+            if (nameMatch) telemetry.push(`<span class="text-sky-300">Profile:</span> ${escapeHtml(nameMatch[1])}`);
+            if (moneyMatch) telemetry.push(`<span class="text-emerald-300">Money:</span> €${Number(moneyMatch[1]).toLocaleString()}`);
+            if (xpMatch) telemetry.push(`<span class="text-amber-300">XP:</span> ${Number(xpMatch[1]).toLocaleString()}`);
+            return telemetry;
+        }
+
+        function formatByteSize(bytes) {
+            if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+        }
+
         async function processSiiFile(file) {
             const infoEl = document.getElementById('siiInfo');
             const outEl = document.getElementById('siiOutput');
             const dlBtn = document.getElementById('downloadSiiBtn');
+            const editBtn = document.getElementById('editSiiBtn');
+            const quickTags = document.getElementById('siiQuickTags');
 
+            if (isSiiEditMode) toggleSiiEditMode(false);
             currentSiiFileName = file.name.replace(/\.sii$/i, '') + '_decrypted.sii';
             dlBtn.disabled = true;
-            outEl.textContent = 'Processing...';
+            editBtn.disabled = true;
+            outEl.textContent = 'Processing large SII stream...';
+
+            await new Promise((r) => setTimeout(r, 10));
 
             try {
                 const buf = await file.arrayBuffer();
@@ -1126,30 +1495,44 @@
                     finalText = new TextDecoder('utf-8', { fatal: false }).decode(data);
                 }
 
+                data = null;
+
                 finalText = finalText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
                 currentDecryptedText = finalText;
-                currentDisplayedText = finalText;
-                outEl.textContent = finalText;
-                outEl.classList.remove('text-slate-400');
+                isLargeFileMode = finalText.length > LARGE_FILE_THRESHOLD_CHARS;
+                totalChunks = isLargeFileMode ? Math.ceil(finalText.length / CHUNK_SIZE_CHARS) : 1;
+                activeChunkIndex = 0;
+
+                renderActiveChunk(true);
+                outEl.classList.remove('text-slate-400', 'cursor-pointer');
+                outEl.classList.add('text-slate-200');
                 dlBtn.disabled = false;
+                editBtn.disabled = false;
+                quickTags.classList.remove('hidden');
+                quickTags.classList.add('flex');
 
                 if (document.getElementById('siiSearchInput').value) {
-                    runSiiSearch(true);
+                    runSiiSearch(true, true);
                 }
 
-                const lineCount = finalText.split('\n').length;
+                const telemetry = extractQuickTelemetry(finalText);
+                const rawByteLength = buf.byteLength;
+                const decodedByteLength = new TextEncoder().encode(finalText).length;
+                const formattedRawSize = formatByteSize(rawByteLength);
+                const formattedTextSize = formatByteSize(decodedByteLength);
                 infoEl.classList.remove('hidden');
                 infoEl.innerHTML = `
-                    <div class="text-slate-200"><span class="text-slate-400">File:</span> ${file.name} (${buf.byteLength.toLocaleString()} B)</div>
+                    <div class="text-slate-200"><span class="text-slate-400">File:</span> ${escapeHtml(file.name)} (${formattedRawSize})</div>
                     <div class="text-emerald-400">${stages.join('  →  ')}</div>
-                    <div class="text-slate-300">${lineCount.toLocaleString()} lines • ${finalText.length.toLocaleString()} chars</div>
+                    ${telemetry.length ? `<div class="flex items-center gap-2.5 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${telemetry.join(' <span class="text-slate-600">•</span> ')}</div>` : ''}
+                    <div class="text-slate-300">${formattedTextSize} text${isLargeFileMode ? ` • ${totalChunks} parts` : ''}</div>
                 `;
-                showToast('SII decrypted successfully!');
+                showToast(isLargeFileMode ? `Decoded ${formattedTextSize} in fast chunked mode` : 'SII decrypted successfully!');
             } catch (err) {
                 console.error(err);
                 infoEl.classList.remove('hidden');
-                infoEl.innerHTML = `<div class="text-red-400"><i class="fas fa-exclamation-triangle mr-1"></i> Error: ${err.message}</div>`;
+                infoEl.innerHTML = `<div class="text-red-400"><i class="fas fa-exclamation-triangle mr-1"></i> Error: ${escapeHtml(err.message)}</div>`;
                 outEl.textContent = `Failed to decrypt/decode "${file.name}".\nReason: ${err.message}`;
             }
         }
